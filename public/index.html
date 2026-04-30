@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<!--
+  ============================================================
+  index.html — A estrutura do site
+  ============================================================
+  O HTML define O QUÊ existe na página.
+  O CSS (style.css) define COMO cada coisa aparece.
+  O JS (main.js) define O QUE ACONTECE quando o usuário interage.
+
+  Seções deste site:
+  1. <head>       — Metadados, fontes, link para o CSS
+  2. #navbar      — Barra de navegação fixa no topo
+  3. #hero        — Seção principal / capa
+  4. #services    — Serviços oferecidos
+  5. #about       — Sobre a barbearia
+  6. #gallery     — Galeria de fotos
+  7. #contact     — Contato / agendamento
+  8. <footer>     — Rodapé
+  ============================================================
+-->
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport: essencial para sites responsivos (funcionar bem no celular) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barbearia — Template</title>
+  
+
+  <!--
+    Google Fonts: importando fontes externas.
+    - Cormorant Garant: fonte serifada elegante, usada nos títulos
+    - DM Mono: fonte monoespaçada para detalhes e textos menores
+    Se quiser trocar, acesse fonts.google.com e substitua os nomes
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Link para o arquivo CSS. O navegador vai procurar em public/css/style.css -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <!-- =====================================================
+    NAVBAR — Barra de navegação
+    Fica fixa no topo enquanto o usuário scrolla.
+    "data-scrolled" é um atributo customizado que o JS vai
+    adicionar quando o usuário descer a página, mudando o estilo.
+  ====================================================== -->
+  <nav id="navbar">
+    <div class="nav-container">
+      <!-- Logo da barbearia — altere o texto aqui -->
+      <a href="#hero" class="nav-logo">
+        <span class="logo-symbol">✦</span>
+        <span class="logo-text">CORTE & ARTE</span>
+      </a>
+
+      <!-- Links de navegação — os href com # fazem scroll suave até a seção -->
+      <ul class="nav-links">
+        <li><a href="#services">Serviços</a></li>
+        <li><a href="#about">Sobre</a></li>
+        <li><a href="#gallery">Galeria</a></li>
+        <li><a href="#contact" class="nav-cta">Agendar</a></li>
+      </ul>
+
+      <!-- Botão hambúrguer para mobile — aparece só em telas pequenas -->
+      <button class="hamburger" id="hamburger" aria-label="Abrir menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <!-- Menu mobile — aparece/desaparece via JS -->
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#services" class="mobile-link">Serviços</a>
+      <a href="#about" class="mobile-link">Sobre</a>
+      <a href="#gallery" class="mobile-link">Galeria</a>
+      <a href="#contact" class="mobile-link">Agendar</a>
+    </div>
+  </nav>
+
+
+  <!-- =====================================================
+    HERO — Seção de abertura / capa
+    É a primeira coisa que o visitante vê.
+    A imagem de fundo vem via CSS (background-image).
+  ====================================================== -->
+  <section id="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">Est. 2015 — São Paulo</p>
+      <h1 class="hero-title">
+        A Arte<br>
+        <em>do Corte</em><br>
+        Perfeito.
+      </h1>
+      <p class="hero-subtitle">
+        Tradição, precisão e estilo em cada detalhe.<br>
+        Porque sua aparência diz quem você é.
+      </p>
+      <div class="hero-actions">
+        <a href="#contact" class="btn btn-primary">Agendar Horário</a>
+        <a href="#services" class="btn btn-outline">Ver Serviços</a>
+      </div>
+    </div>
+
+    <!-- Decoração visual — linha e texto lateral -->
+    <div class="hero-side-text">BARBEARIA · ESTILO · TRADIÇÃO</div>
+
+    <!-- Indicador de scroll -->
+    <div class="scroll-indicator">
+      <span>scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+    SERVICES — Serviços
+    Cada card representa um serviço.
+    Para adicionar um serviço: copie um <div class="service-card">
+    e altere o conteúdo dentro dele.
+  ====================================================== -->
+  <section id="services">
+    <div class="container">
+      <div class="section-header">
+        <p class="section-label">— O que fazemos</p>
+        <h2 class="section-title">Nossos Serviços</h2>
+      </div>
+
+      <div class="services-grid">
+
+        <!-- CARD DE SERVIÇO — Copie este bloco para adicionar mais serviços -->
+        <div class="service-card" data-animate>
+          <div class="service-number">01</div>
+          <div class="service-icon">✂</div>
+          <h3 class="service-name">Corte Clássico</h3>
+          <p class="service-desc">Corte tradicional com tesoura ou máquina, finalizado com navalha para um acabamento impecável.</p>
+          <div class="service-price">R$ 45</div>
+        </div>
+
+        <div class="service-card" data-animate>
+          <div class="service-number">02</div>
+          <div class="service-icon">⚔</div>
+          <h3 class="service-name">Barba Completa</h3>
+          <p class="service-desc">Modelagem e acabamento de barba com navalha quente, toalha aquecida e produtos premium.</p>
+          <div class="service-price">R$ 35</div>
+        </div>
+
+        <div class="service-card" data-animate>
+          <div class="service-number">03</div>
+          <div class="service-icon">◈</div>
+          <h3 class="service-name">Corte + Barba</h3>
+          <p class="service-desc">O combo completo — corte e barba com toda a atenção que você merece. O melhor custo-benefício.</p>
+          <div class="service-price">R$ 70</div>
+        </div>
+
+        <div class="service-card" data-animate>
+          <div class="service-number">04</div>
+          <div class="service-icon">✦</div>
+          <h3 class="service-name">Relaxamento</h3>
+          <p class="service-desc">Tratamento capilar com máscara nutritiva, finalizado com massagem relaxante no couro cabeludo.</p>
+          <div class="service-price">R$ 55</div>
+        </div>
+
+        <div class="service-card" data-animate>
+          <div class="service-number">05</div>
+          <div class="service-icon">◉</div>
+          <h3 class="service-name">Pigmentação</h3>
+          <p class="service-desc">Técnica de micropigmentação capilar para disfarçar falhas e dar mais densidade ao cabelo.</p>
+          <div class="service-price">R$ 120</div>
+        </div>
+
+        <div class="service-card" data-animate>
+          <div class="service-number">06</div>
+          <div class="service-icon">★</div>
+          <h3 class="service-name">Pacote VIP</h3>
+          <p class="service-desc">Experiência completa: corte, barba, sobrancelha, hidratação e massagem. Para quem quer o melhor.</p>
+          <div class="service-price">R$ 150</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+    ABOUT — Sobre a barbearia
+    Conte a história do seu negócio aqui.
+    A imagem usa uma URL do Unsplash (foto real de barbearia).
+    Troque a URL pelo caminho da sua foto, se quiser.
+  ====================================================== -->
+  <section id="about">
+    <div class="container">
+      <div class="about-grid">
+
+        <div class="about-image-wrapper" data-animate>
+          <!--
+            Imagem real de barbearia do Unsplash.
+            Para trocar: coloque o caminho da sua imagem no "src"
+            Exemplo: src="imagens/minha-barbearia.jpg"
+          -->
+          <img
+            src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=700&auto=format&fit=crop&q=80"
+            alt="Barbeiro trabalhando"
+            class="about-img"
+          >
+          <div class="about-badge">
+            <span class="badge-number">10+</span>
+            <span class="badge-text">Anos de<br>Experiência</span>
+          </div>
+        </div>
+
+        <div class="about-content" data-animate>
+          <p class="section-label">— Nossa história</p>
+          <h2 class="section-title">Mais do que um<br>corte de cabelo.</h2>
+          <p class="about-text">
+            Fundada em 2015, a Corte & Arte nasceu da paixão por transformar
+            a barbearia em um espaço de identidade e confiança. Aqui, cada
+            cliente é tratado como único — porque cada estilo tem sua própria história.
+          </p>
+          <p class="about-text">
+            Nossa equipe é formada por barbeiros com anos de formação e dedicação,
+            sempre atualizados nas últimas tendências sem perder o respeito pela
+            tradição do ofício.
+          </p>
+
+          <!-- Estatísticas — altere os números conforme sua realidade -->
+          <div class="about-stats">
+            <div class="stat">
+              <span class="stat-number">3.000+</span>
+              <span class="stat-label">Clientes Satisfeitos</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number">5</span>
+              <span class="stat-label">Barbeiros Especialistas</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number">100%</span>
+              <span class="stat-label">Produtos Premium</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+    GALLERY — Galeria de fotos
+    Mostre seus trabalhos aqui.
+    Todas as imagens são do Unsplash e podem ser substituídas.
+  ====================================================== -->
+  <section id="gallery">
+    <div class="container">
+      <div class="section-header">
+        <p class="section-label">— Nosso trabalho</p>
+        <h2 class="section-title">Galeria</h2>
+      </div>
+    </div>
+
+    <!--
+      A galeria fica fora do .container para ocupar a largura total.
+      O layout é um grid CSS com células de tamanhos variados,
+      criando um efeito de "mosaico" mais dinâmico.
+    -->
+    <div class="gallery-grid">
+      <div class="gallery-item gallery-item--tall" data-animate>
+        <img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=600&auto=format&fit=crop&q=80" alt="Corte de cabelo">
+        <div class="gallery-overlay">
+          <span>Corte Fade</span>
+        </div>
+      </div>
+      <div class="gallery-item" data-animate>
+        <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=600&auto=format&fit=crop&q=80" alt="Barba">
+        <div class="gallery-overlay">
+          <span>Barba Aparada</span>
+        </div>
+      </div>
+      <div class="gallery-item" data-animate>
+        <img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=600&auto=format&fit=crop&q=80" alt="Barbearia">
+        <div class="gallery-overlay">
+          <span>O Ambiente</span>
+        </div>
+      </div>
+      <div class="gallery-item gallery-item--wide" data-animate>
+        <img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=900&auto=format&fit=crop&q=80" alt="Barbeiro">
+        <div class="gallery-overlay">
+          <span>Acabamento Preciso</span>
+        </div>
+      </div>
+      <div class="gallery-item" data-animate>
+        <img src="https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?w=600&auto=format&fit=crop&q=80" alt="Ferramentas">
+        <div class="gallery-overlay">
+          <span>Ferramentas Premium</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+    CONTACT — Contato e Agendamento
+    Formulário simples. O JS captura o envio e mostra
+    uma mensagem de sucesso (sem backend real, por enquanto).
+    Para conectar a um backend real, veja os comentários no main.js.
+  ====================================================== -->
+  <section id="contact">
+    <div class="container">
+      <div class="contact-grid">
+
+        <div class="contact-info" data-animate>
+          <p class="section-label">— Fale conosco</p>
+          <h2 class="section-title">Agende seu<br>horário.</h2>
+          <p class="contact-text">
+            Entre em contato pelo formulário ou pelos
+            nossos canais diretos. Respondemos sempre
+            com rapidez.
+          </p>
+
+          <!-- Altere os dados de contato aqui -->
+          <div class="contact-details">
+            <div class="contact-item">
+              <span class="contact-icon">◎</span>
+              <div>
+                <strong>Endereço</strong>
+                <p>Rua dos Barbeiros, 123 — Centro<br>São Paulo, SP</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">◉</span>
+              <div>
+                <strong>Telefone / WhatsApp</strong>
+                <p>(11) 99999-0000</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">◈</span>
+              <div>
+                <strong>Horário de Funcionamento</strong>
+                <p>Seg–Sex: 9h às 20h<br>Sáb: 9h às 18h</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-form-wrapper" data-animate>
+          <!--
+            O formulário usa o evento "submit" capturado pelo JS.
+            O atributo "id" é importante — o JS usa document.getElementById()
+            para encontrar este formulário pelo ID.
+          -->
+          <form id="contactForm" class="contact-form">
+            <div class="form-group">
+              <label for="name">Nome completo</label>
+              <input type="text" id="name" name="name" placeholder="Seu nome" required>
+            </div>
+            <div class="form-group">
+              <label for="phone">WhatsApp</label>
+              <input type="tel" id="phone" name="phone" placeholder="(11) 99999-0000" required>
+            </div>
+            <div class="form-group">
+              <label for="service">Serviço desejado</label>
+              <select id="service" name="service" required>
+                <option value="" disabled selected>Selecione um serviço</option>
+                <option value="corte">Corte Clássico — R$ 45</option>
+                <option value="barba">Barba Completa — R$ 35</option>
+                <option value="combo">Corte + Barba — R$ 70</option>
+                <option value="relaxamento">Relaxamento — R$ 55</option>
+                <option value="pigmentacao">Pigmentação — R$ 120</option>
+                <option value="vip">Pacote VIP — R$ 150</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="date">Data preferida</label>
+              <input type="date" id="date" name="date" required>
+            </div>
+            <div class="form-group">
+              <label for="message">Observações (opcional)</label>
+              <textarea id="message" name="message" placeholder="Alguma preferência ou informação adicional?" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Enviar Agendamento</button>
+
+            <!-- Mensagem de sucesso — aparece após envio, gerenciada pelo JS -->
+            <div id="formSuccess" class="form-success" style="display:none;">
+              ✦ Agendamento enviado! Entraremos em contato em breve.
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+    FOOTER — Rodapé
+  ====================================================== -->
+  <footer id="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-logo">
+          <span class="logo-symbol">✦</span>
+          <span class="logo-text">CORTE & ARTE</span>
+        </div>
+        <p class="footer-tagline">Tradição e estilo desde 2015.</p>
+
+        <!-- Redes sociais — adicione seus links reais aqui -->
+        <div class="footer-social">
+          <a href="#" aria-label="Instagram">Instagram</a>
+          <a href="#" aria-label="WhatsApp">WhatsApp</a>
+          <a href="#" aria-label="Facebook">Facebook</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2024 Corte & Arte Barbearia. Todos os direitos reservados.</p>
+        <p class="footer-credits">Template feito com Node.js</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Link para o JavaScript — sempre no final do <body> para que
+       o HTML já tenha carregado antes de o JS tentar manipulá-lo -->
+  <script src="js/main.js"></script>
+</body>
+</html>

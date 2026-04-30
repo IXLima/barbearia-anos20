@@ -1,0 +1,1100 @@
+/* ============================================================
+   style.css — O visual completo da barbearia
+   ============================================================
+
+   ESTRUTURA DESTE ARQUIVO:
+   1. Variáveis CSS (as "configurações" de cores, fontes, etc.)
+   2. Reset & Base
+   3. Componentes reutilizáveis (botões, container, labels)
+   4. Navbar
+   5. Hero
+   6. Services
+   7. About
+   8. Gallery
+   9. Contact
+   10. Footer
+   11. Animações
+   12. Responsividade (mobile)
+
+   ============================================================
+   VARIÁVEIS CSS — Como um arquivo de configuração
+   ============================================================
+   Defina aqui as cores, fontes e tamanhos do site.
+   Para mudar a cor de TODOS os títulos de uma vez, por exemplo,
+   basta alterar --color-white abaixo.
+
+   Sintaxe: --nome-da-variavel: valor;
+   Para usar: color: var(--nome-da-variavel);
+   ============================================================ */
+   
+
+:root {
+  /* CORES */
+  --color-black:    #0a0a0a;   /* Fundo principal — quase preto (não 100% para ser mais suave) */
+  --color-dark:     #111111;   /* Fundo de seções alternadas */
+  --color-card:     #161616;   /* Fundo dos cards de serviço */
+  --color-border:   #2a2a2a;   /* Cor das bordas e linhas separadoras */
+  --color-muted:    #555555;   /* Textos secundários / desabilitados */
+  --color-mid:      #888888;   /* Textos de suporte */
+  --color-white:    #f5f5f0;   /* Branco principal (levemente quente, mais elegante) */
+  --color-accent:   #ffffff;   /* Branco puro para destaques máximos */
+
+  /* TIPOGRAFIA */
+  --font-display: 'Cormorant Garant', Georgia, serif;  /* Títulos elegantes */
+  --font-mono:    'DM Mono', 'Courier New', monospace; /* Labels e detalhes */
+
+  /* TAMANHOS */
+  --max-width: 1200px;  /* Largura máxima do conteúdo centralizado */
+
+  /* ESPAÇAMENTOS */
+  --section-padding: 120px;  /* Espaço vertical entre seções */
+
+  /* TRANSIÇÕES */
+  --transition: 0.3s ease;   /* Velocidade padrão das animações de hover */
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================
+   Remove os estilos padrão dos navegadores para que tudo
+   comece do zero e seja consistente entre Chrome, Firefox, etc.
+   ============================================================ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Faz com que padding não aumente o tamanho dos elementos */
+}
+
+html {
+  scroll-behavior: smooth; /* Ativa o scroll suave ao clicar em links de âncora (#) */
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--color-black);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-weight: 300;
+  line-height: 1.7;
+  overflow-x: hidden; /* Impede scroll horizontal indesejado */
+}
+
+img {
+  max-width: 100%;  /* Imagens nunca ultrapassam a largura do container */
+  display: block;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+}
+
+/* ============================================================
+   COMPONENTES REUTILIZÁVEIS
+   ============================================================ */
+
+/* Container: centraliza o conteúdo e limita a largura máxima */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* Section Label: pequeno texto antes dos títulos principais */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+  margin-bottom: 16px;
+}
+
+/* Section Header: cabeçalho das seções com label + título */
+.section-header {
+  margin-bottom: 70px;
+}
+
+/* Section Title: título principal de cada seção */
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem); /* clamp: tamanho responsivo automático */
+  font-weight: 300;
+  line-height: 1.1;
+  color: var(--color-accent);
+  letter-spacing: -0.02em;
+}
+
+/* BOTÕES */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+  position: relative;
+}
+
+/* Botão primário: fundo branco, texto preto */
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-black);
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: var(--color-accent);
+  outline: 1px solid var(--color-accent);
+}
+
+/* Botão outline: transparente com borda branca */
+.btn-outline {
+  background: transparent;
+  color: var(--color-white);
+  outline: 1px solid var(--color-border);
+}
+
+.btn-outline:hover {
+  outline-color: var(--color-white);
+  background: rgba(255,255,255,0.05);
+}
+
+/* Botão que ocupa 100% da largura do container */
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+
+/* ============================================================
+   NAVBAR
+   ============================================================ */
+
+#navbar {
+  position: fixed;       /* Fica fixo no topo mesmo ao rolar a página */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;         /* z-index alto para ficar na frente de tudo */
+  transition: all var(--transition);
+  padding: 24px 0;
+}
+
+/* Quando o JS adiciona data-scrolled="true", o navbar ganha fundo escuro */
+#navbar[data-scrolled="true"] {
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px); /* Efeito de vidro fosco */
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.logo-symbol {
+  font-size: 1rem;
+  color: var(--color-white);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.nav-links a {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+  transition: color var(--transition);
+}
+
+.nav-links a:hover {
+  color: var(--color-white);
+}
+
+/* Botão de CTA na navbar */
+.nav-cta {
+  padding: 10px 22px;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-white) !important;
+  transition: all var(--transition) !important;
+}
+
+.nav-cta:hover {
+  background: var(--color-white) !important;
+  color: var(--color-black) !important;
+  border-color: var(--color-white) !important;
+}
+
+/* Hambúrguer (mobile) — escondido por padrão no desktop */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--color-white);
+  transition: all var(--transition);
+}
+
+/* Menu mobile */
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  padding: 20px 40px;
+  border-top: 1px solid var(--color-border);
+  background: rgba(10, 10, 10, 0.98);
+}
+
+.mobile-menu.active {
+  display: flex;
+}
+
+.mobile-link {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+  transition: color var(--transition);
+}
+
+.mobile-link:hover,
+.mobile-link:last-child {
+  color: var(--color-white);
+}
+
+.mobile-link:last-child {
+  border-bottom: none;
+}
+
+
+/* ============================================================
+   HERO
+   ============================================================ */
+
+#hero {
+  position: relative;
+  height: 100vh;           /* 100% da altura da janela */
+  min-height: 700px;
+  display: flex;
+  align-items: center;
+
+  /* Imagem de fundo — troque a URL pela sua foto */
+  background-image: url('https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=1920&auto=format&fit=crop&q=80');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Efeito parallax simples */
+}
+
+/* Overlay escuro sobre a imagem para garantir legibilidade do texto */
+.hero-overlay {
+  position: absolute;
+  inset: 0; /* Equivale a: top:0; right:0; bottom:0; left:0 */
+  background: linear-gradient(
+    to right,
+    rgba(10,10,10, 0.92) 0%,
+    rgba(10,10,10, 0.70) 50%,
+    rgba(10,10,10, 0.40) 100%
+  );
+}
+
+.hero-content {
+  position: relative; /* Para ficar na frente do overlay */
+  z-index: 2;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 40px;
+  padding-top: 80px; /* Compensa a altura da navbar */
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+  margin-bottom: 24px;
+
+  /* Animação de entrada */
+  animation: fadeInUp 0.8s ease forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 10vw, 8rem);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--color-accent);
+  margin-bottom: 28px;
+
+  animation: fadeInUp 0.8s ease forwards;
+  animation-delay: 0.25s;
+  opacity: 0;
+}
+
+.hero-title em {
+  font-style: italic;
+  color: var(--color-mid);
+}
+
+.hero-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.8;
+  color: var(--color-mid);
+  margin-bottom: 48px;
+  max-width: 380px;
+
+  animation: fadeInUp 0.8s ease forwards;
+  animation-delay: 0.4s;
+  opacity: 0;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  animation: fadeInUp 0.8s ease forwards;
+  animation-delay: 0.55s;
+  opacity: 0;
+}
+
+/* Texto lateral decorativo rotacionado */
+.hero-side-text {
+  position: absolute;
+  right: 40px;
+  bottom: 80px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  writing-mode: vertical-rl; /* Rotaciona o texto verticalmente */
+  transform: rotate(180deg);
+
+  animation: fadeIn 1s ease forwards;
+  animation-delay: 0.8s;
+  opacity: 0;
+}
+
+/* Indicador de scroll */
+.scroll-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+
+  animation: fadeIn 1s ease forwards;
+  animation-delay: 1s;
+  opacity: 0;
+}
+
+.scroll-line {
+  width: 60px;
+  height: 1px;
+  background: var(--color-muted);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animação da linha de scroll */
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--color-white);
+  animation: scrollLine 2s ease infinite;
+}
+
+
+/* ============================================================
+   SERVICES
+   ============================================================ */
+
+#services {
+  padding: var(--section-padding) 0;
+  background: var(--color-dark);
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 colunas iguais */
+  gap: 1px; /* Gap de 1px cria as linhas divisórias entre cards */
+  background: var(--color-border); /* O fundo do grid cria as bordas */
+  border: 1px solid var(--color-border);
+}
+
+.service-card {
+  background: var(--color-card);
+  padding: 48px 36px;
+  position: relative;
+  transition: background var(--transition);
+  overflow: hidden;
+}
+
+.service-card:hover {
+  background: #1c1c1c;
+}
+
+/* Linha decorativa que aparece no hover */
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 0;
+  background: var(--color-white);
+  transition: height 0.4s ease;
+}
+
+.service-card:hover::before {
+  height: 100%;
+}
+
+.service-number {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--color-muted);
+  margin-bottom: 24px;
+}
+
+.service-icon {
+  font-size: 1.5rem;
+  color: var(--color-mid);
+  margin-bottom: 20px;
+  display: block;
+  transition: color var(--transition);
+}
+
+.service-card:hover .service-icon {
+  color: var(--color-white);
+}
+
+.service-name {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--color-white);
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+}
+
+.service-desc {
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: var(--color-mid);
+  margin-bottom: 28px;
+}
+
+.service-price {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--color-accent);
+  letter-spacing: -0.02em;
+}
+
+
+/* ============================================================
+   ABOUT
+   ============================================================ */
+
+#about {
+  padding: var(--section-padding) 0;
+  background: var(--color-black);
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.about-image-wrapper {
+  position: relative;
+}
+
+.about-img {
+  width: 100%;
+  aspect-ratio: 3/4; /* Proporção fixa da imagem */
+  object-fit: cover;
+  filter: grayscale(20%); /* Leve dessaturação para harmonizar com o tema */
+  transition: filter var(--transition);
+}
+
+.about-img:hover {
+  filter: grayscale(0%);
+}
+
+/* Badge "10+ Anos" sobre a imagem */
+.about-badge {
+  position: absolute;
+  bottom: -24px;
+  right: -24px;
+  background: var(--color-accent);
+  color: var(--color-black);
+  padding: 28px;
+  text-align: center;
+  min-width: 110px;
+}
+
+.badge-number {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.badge-text {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.about-content {
+  padding-left: 20px;
+}
+
+.about-text {
+  font-size: 0.85rem;
+  line-height: 1.9;
+  color: var(--color-mid);
+  margin-bottom: 20px;
+}
+
+.about-stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--color-border);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--color-accent);
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+
+/* ============================================================
+   GALLERY
+   ============================================================ */
+
+#gallery {
+  padding: var(--section-padding) 0;
+  background: var(--color-dark);
+}
+
+#gallery .container {
+  margin-bottom: 0;
+}
+
+#gallery .section-header {
+  margin-bottom: 50px;
+}
+
+/* Grid de galeria: layout em mosaico com grid-template-areas */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 280px);
+  gap: 4px;
+}
+
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Item alto (ocupa 2 linhas) */
+.gallery-item--tall {
+  grid-row: span 2;
+}
+
+/* Item largo (ocupa 2 colunas) */
+.gallery-item--wide {
+  grid-column: span 2;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+/* Overlay com label que aparece no hover */
+.gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: flex-end;
+  padding: 24px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.gallery-item:hover .gallery-overlay {
+  opacity: 1;
+}
+
+.gallery-overlay span {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-white);
+}
+
+
+/* ============================================================
+   CONTACT
+   ============================================================ */
+
+#contact {
+  padding: var(--section-padding) 0;
+  background: var(--color-black);
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+}
+
+.contact-text {
+  font-size: 0.82rem;
+  line-height: 1.9;
+  color: var(--color-mid);
+  margin-top: 24px;
+  margin-bottom: 40px;
+}
+
+.contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.contact-item {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.contact-icon {
+  font-size: 1rem;
+  color: var(--color-mid);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.contact-item strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-white);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.contact-item p {
+  font-size: 0.8rem;
+  color: var(--color-mid);
+  line-height: 1.6;
+}
+
+/* FORMULÁRIO */
+.contact-form-wrapper {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  padding: 48px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+}
+
+/* Estilo base para inputs, selects e textareas */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 12px 0;
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+
+  /* Estilo do color picker de data (ícone do calendário) */
+  color-scheme: dark;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-bottom-color: var(--color-white);
+}
+
+/* Placeholder mais sutil */
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--color-muted);
+}
+
+/* Estilo da opção selecionada no select */
+.form-group select option {
+  background: var(--color-card);
+  color: var(--color-white);
+}
+
+.form-group textarea {
+  resize: vertical; /* Permite redimensionar só verticalmente */
+  min-height: 80px;
+}
+
+/* Mensagem de sucesso */
+.form-success {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--color-border);
+  color: var(--color-white);
+  padding: 16px 20px;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+#footer {
+  background: var(--color-dark);
+  border-top: 1px solid var(--color-border);
+  padding: 60px 0 40px;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.footer-tagline {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  letter-spacing: 0.1em;
+}
+
+.footer-social {
+  display: flex;
+  gap: 32px;
+  margin-top: 8px;
+}
+
+.footer-social a {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  transition: color var(--transition);
+}
+
+.footer-social a:hover {
+  color: var(--color-white);
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 32px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  letter-spacing: 0.05em;
+}
+
+.footer-credits {
+  opacity: 0.5;
+}
+
+
+/* ============================================================
+   ANIMAÇÕES
+   ============================================================ */
+
+/* Animação de entrada de baixo para cima */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animação de fade simples */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Animação da linha de scroll */
+@keyframes scrollLine {
+  0%   { left: -100%; }
+  100% { left: 100%; }
+}
+
+/*
+  Elementos com data-animate começam invisíveis.
+  Quando o JS adiciona a classe .visible, eles animam.
+  Isso cria o efeito de "aparecer ao rolar a página".
+*/
+[data-animate] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+[data-animate].visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================
+   Media queries: ajustes de layout para telas menores.
+   @media (max-width: Xpx) significa:
+   "Aplique esses estilos quando a tela tiver no máximo X pixels"
+   ============================================================ */
+
+/* Tablets e telas médias */
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .gallery-item--tall,
+  .gallery-item--wide {
+    grid-row: span 1;
+    grid-column: span 1;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  :root {
+    --section-padding: 80px;
+  }
+
+  .container {
+    padding: 0 24px;
+  }
+
+  /* Navbar: esconde os links e mostra o hambúrguer */
+  .nav-links {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  /* Hero: título menor */
+  .hero-title {
+    font-size: clamp(3rem, 15vw, 5rem);
+  }
+
+  .hero-side-text {
+    display: none;
+  }
+
+  /* Services: 1 coluna */
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* About: 1 coluna */
+  .about-grid {
+    grid-template-columns: 1fr;
+    gap: 60px;
+  }
+
+  .about-badge {
+    bottom: -20px;
+    right: 20px;
+  }
+
+  .about-content {
+    padding-left: 0;
+  }
+
+  .about-stats {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* Gallery: 1 coluna */
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .gallery-item {
+    height: 260px;
+  }
+
+  /* Contact: 1 coluna */
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .contact-form-wrapper {
+    padding: 32px 24px;
+  }
+
+  /* Footer */
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+}
