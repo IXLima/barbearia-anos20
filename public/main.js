@@ -31,7 +31,29 @@
 // setAttribute/removeAttribute adicionam/removem atributos HTML.
 // No CSS, usamos #navbar[data-scrolled="true"] para estilizá-lo.
 // ============================================================
-app.use(express.static('public'));
+// Captura todos os elementos que têm o atributo data-animate
+const elementosAnimados = document.querySelectorAll('[data-animate]');
+
+// Cria um "observador" que vigia quando o elemento entra na tela
+const observador = new IntersectionObserver((entradas) => {
+  entradas.forEach(entrada => {
+    // Se o elemento apareceu na tela...
+    if (entrada.isIntersecting) {
+      // Adiciona a classe que faz o CSS mostrar o card
+      entrada.target.classList.add('visible');
+      // Para de observar para não ficar animando toda hora que subir e descer
+      observador.unobserve(entrada.target);
+    }
+  });
+}, {
+  threshold: 0.1 // O efeito dispara quando 10% do card aparece na tela
+});
+
+// Manda o observador vigiar cada um dos cards
+elementosAnimados.forEach(elemento => {
+  observador.observe(elemento);
+});
+
 const navbar = document.getElementById('navbar');
 
 window.addEventListener('scroll', () => {

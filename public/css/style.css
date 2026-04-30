@@ -914,13 +914,13 @@ ul {
 
 .footer-social {
   display: flex;
-  gap: 32px;
+  gap: 40px;
   margin-top: 8px;
 }
 
 .footer-social a {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 2.3rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--color-muted);
@@ -980,7 +980,7 @@ ul {
   Isso cria o efeito de "aparecer ao rolar a página".
 */
 [data-animate] {
-  opacity: 0;
+  opacity: 1;
   transform: translateY(30px);
   transition: opacity 0.7s ease, transform 0.7s ease;
 }
