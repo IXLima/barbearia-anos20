@@ -1,1 +1,33 @@
-git rm -r --cached node_modules/
+# =========================================================================
+# IGNORAR DEPENDÊNCIAS
+# =========================================================================
+# O galpão de peças. O package.json já ensina como baixar tudo de novo.
+node_modules/
+
+# =========================================================================
+# IGNORAR VARIÁVEIS DE AMBIENTE E SEGURANÇA (CRÍTICO)
+# =========================================================================
+# Seu cofre de senhas. Se isso for para o GitHub, os bots raspadores 
+# de credenciais roubam suas chaves em questão de segundos.
+.env
+.env.test
+.env.production
+.env.local
+
+# =========================================================================
+# IGNORAR LOGS DE ERRO
+# =========================================================================
+# Em testes de invasão (pentest), arquivos de log são minas de ouro porque 
+# costumam vazar o caminho completo das pastas do servidor e da sua máquina.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# =========================================================================
+# IGNORAR LIXO DO SISTEMA OPERACIONAL
+# =========================================================================
+# Arquivos de cache visual que o Windows e o Mac criam sozinhos e não 
+# servem para nada no código.
+.DS_Store
+Thumbs.db
