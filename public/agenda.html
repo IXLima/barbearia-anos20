@@ -1,132 +1,403 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-<!--
-  ============================================================
-  index.html — A estrutura do site
-  ============================================================
-  O HTML define O QUÊ existe na página.
-  O CSS (style.css) define COMO cada coisa aparece.
-  O JS (main.js) define O QUE ACONTECE quando o usuário interage.
-
-  Seções deste site:
-  1. <head>       — Metadados, fontes, link para o CSS
-  2. #navbar      — Barra de navegação fixa no topo
-  3. #hero        — Seção principal / capa
-  4. #services    — Serviços oferecidos
-  5. #about       — Sobre a barbearia
-  6. #gallery     — Galeria de fotos
-  7. #contact     — Contato / agendamento
-  8. <footer>     — Rodapé
-  ============================================================
--->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agendamento</title>
-  
-
-  <!--
-    Google Fonts: importando fontes externas.
-    - Cormorant Garant: fonte serifada elegante, usada nos títulos
-    - DM Mono: fonte monoespaçada para detalhes e textos menores
-    Se quiser trocar, acesse fonts.google.com e substitua os nomes
-  -->
+  <title>Agendamento — Corte & Arte</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --preto: #0a0a0a; --escuro: #111; --card: #161616;
+      --borda: #2a2a2a; --mudo: #555; --meio: #888;
+      --branco: #f5f5f0; --puro: #fff;
+      --fonte-titulo: 'Cormorant Garant', Georgia, serif;
+      --fonte-mono: 'DM Mono', 'Courier New', monospace;
+      --t: 0.25s ease;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--preto); color: var(--branco);
+      font-family: var(--fonte-mono); font-weight: 300; line-height: 1.7;
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
 
-  <!-- Link para o arquivo CSS. O navegador vai procurar em public/css/style.css -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    /* ====== NAVBAR ====== */
+    .navbar {
+      background: rgba(10,10,10,0.96); border-bottom: 1px solid var(--borda);
+      padding: 16px 0; position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.78rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase;
+    }
+    .nav-usuario {
+      display: flex; align-items: center; gap: 16px;
+    }
+    .usuario-foto {
+      width: 32px; height: 32px; border-radius: 50%;
+      object-fit: cover; border: 1px solid var(--borda);
+      background: var(--card); display: flex; align-items: center;
+      justify-content: center; font-size: 0.75rem; color: var(--meio);
+      overflow: hidden; flex-shrink: 0;
+    }
+    .usuario-nome {
+      font-size: 0.72rem; letter-spacing: 0.1em; color: var(--meio);
+      max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .btn-sair {
+      font-size: 0.66rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--mudo); padding: 7px 14px; border: 1px solid var(--borda);
+      transition: all var(--t); cursor: pointer; background: none;
+      font-family: var(--fonte-mono);
+    }
+    .btn-sair:hover { border-color: var(--meio); color: var(--branco); }
 
-  <link rel="stylesheet" href="css/style.css">
+    /* ====== HERO PÁGINA ====== */
+    .pagina-header {
+      padding: 72px 0 56px;
+      border-bottom: 1px solid var(--borda);
+    }
+    .pagina-header .container { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+    .label-secao {
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--meio); margin-bottom: 12px;
+    }
+    .pagina-titulo {
+      font-family: var(--fonte-titulo); font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 300; line-height: 1.0; color: var(--puro); letter-spacing: -0.02em;
+    }
+    .pagina-titulo em { font-style: italic; color: var(--meio); }
+
+    /* ====== CORPO ====== */
+    .pagina-corpo { max-width: 1200px; margin: 0 auto; padding: 72px 40px; }
+    .grid-agenda {
+      display: grid; grid-template-columns: 1fr 1.2fr; gap: 72px; align-items: start;
+    }
+
+    /* ====== INFORMAÇÕES ====== */
+    .info-titulo {
+      font-family: var(--fonte-titulo); font-size: 1.9rem; font-weight: 300;
+      color: var(--puro); margin-bottom: 16px; letter-spacing: -0.01em;
+    }
+    .info-texto { font-size: 0.8rem; color: var(--meio); line-height: 1.9; margin-bottom: 36px; }
+
+    .info-item { display: flex; gap: 16px; margin-bottom: 22px; align-items: flex-start; }
+    .info-icone { font-size: 0.9rem; color: var(--meio); margin-top: 2px; flex-shrink: 0; }
+    .info-item strong {
+      display: block; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--branco); margin-bottom: 3px; font-weight: 500;
+    }
+    .info-item p { font-size: 0.78rem; color: var(--meio); line-height: 1.6; }
+
+    .servicos-resumo { margin-top: 40px; padding-top: 36px; border-top: 1px solid var(--borda); }
+    .servicos-resumo h3 {
+      font-family: var(--fonte-mono); font-size: 0.68rem; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--meio); margin-bottom: 16px;
+    }
+    .servico-linha {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--borda);
+      font-size: 0.78rem;
+    }
+    .servico-linha:last-child { border-bottom: none; }
+    .servico-linha span:first-child { color: var(--branco); }
+    .servico-linha span:last-child { color: var(--meio); font-family: var(--fonte-titulo); font-size: 1rem; }
+
+    /* ====== FORMULÁRIO ====== */
+    .form-card { background: var(--card); border: 1px solid var(--borda); padding: 44px; }
+
+    /* Saudação personalizada com o nome do usuário */
+    .saudacao {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--borda); margin-bottom: 28px;
+    }
+    .saudacao-foto {
+      width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+      border: 1px solid var(--borda); background: var(--escuro);
+      overflow: hidden; flex-shrink: 0;
+    }
+    .saudacao-texto { font-size: 0.75rem; color: var(--meio); }
+    .saudacao-texto strong { display: block; color: var(--branco); font-weight: 400; margin-bottom: 1px; }
+
+    .formulario { display: flex; flex-direction: column; gap: 20px; }
+    .campo { display: flex; flex-direction: column; gap: 7px; }
+    .campo label {
+      font-size: 0.66rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--meio);
+    }
+    .campo input, .campo select, .campo textarea {
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--borda);
+      color: var(--branco); font-family: var(--fonte-mono);
+      font-size: 0.82rem; padding: 10px 0; outline: none;
+      transition: border-color var(--t); width: 100%; color-scheme: dark;
+    }
+    .campo input:focus, .campo select:focus, .campo textarea:focus { border-bottom-color: var(--branco); }
+    .campo input::placeholder, .campo textarea::placeholder { color: var(--mudo); }
+    .campo select option { background: var(--card); color: var(--branco); }
+    .campo textarea { resize: vertical; min-height: 70px; }
+
+    /* Campo preenchido automaticamente (readonly) */
+    .campo input[readonly] { color: var(--meio); cursor: not-allowed; }
+
+    .btn-primario {
+      width: 100%; padding: 14px; background: var(--puro); color: var(--preto);
+      border: none; font-family: var(--fonte-mono); font-size: 0.75rem;
+      letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
+      transition: all var(--t); margin-top: 4px;
+    }
+    .btn-primario:hover { background: transparent; color: var(--puro); outline: 1px solid var(--puro); }
+    .btn-primario:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .msg-sucesso {
+      display: none; background: rgba(255,255,255,0.04);
+      border: 1px solid var(--borda); color: var(--branco);
+      padding: 20px; font-size: 0.78rem; letter-spacing: 0.05em;
+      text-align: center; line-height: 1.8;
+    }
+    .msg-sucesso strong { display: block; font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 300; margin-bottom: 8px; }
+
+    @media (max-width: 900px) {
+      .grid-agenda { grid-template-columns: 1fr; gap: 48px; }
+      .pagina-corpo { padding: 48px 22px; }
+      .pagina-header .container { padding: 0 22px; }
+      .nav-inner { padding: 0 22px; }
+      .form-card { padding: 28px 20px; }
+    }
+  </style>
 </head>
- 
- 
- 
- 
- <section id="contact">
+<body>
+
+  <!-- ====== NAVBAR ====== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo"><span>✦</span> CORTE &amp; ARTE</a>
+      <div class="nav-usuario">
+        <!--
+          Estes elementos serão preenchidos pelo JavaScript
+          usando os dados retornados pela rota /api/usuario
+        -->
+        <div class="usuario-foto" id="usuarioFotoWrap">
+          <span id="usuarioInicial">?</span>
+        </div>
+        <span class="usuario-nome" id="usuarioNome">Carregando...</span>
+        <a href="/auth/logout" class="btn-sair">Sair</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ====== CABEÇALHO DA PÁGINA ====== -->
+  <div class="pagina-header">
     <div class="container">
-      <div class="contact-grid">
+      <p class="label-secao">— Área do cliente</p>
+      <h1 class="pagina-titulo">
+        Agende seu<br><em>horário.</em>
+      </h1>
+    </div>
+  </div>
 
-        <div class="contact-info" data-animate>
-          <p class="section-label">— Fale conosco</p>
-          <h2 class="section-title">Agende seu<br>horário.</h2>
-          <p class="contact-text">
-            Entre em contato pelo formulário ou pelos
-            nossos canais diretos. Respondemos sempre
-            com rapidez.
-          </p>
+  <!-- ====== CORPO ====== -->
+  <div class="pagina-corpo">
+    <div class="grid-agenda">
 
-          <!-- Altere os dados de contato aqui -->
-          <div class="contact-details">
-            <div class="contact-item">
-              <span class="contact-icon">◎</span>
-              <div>
-                <strong>Endereço</strong>
-                <p>Rua dos Barbeiros, 123 — Centro<br>São Paulo, SP</p>
-              </div>
-            </div>
-            <div class="contact-item">
-              <span class="contact-icon">◉</span>
-              <div>
-                <strong>Telefone / WhatsApp</strong>
-                <p>(11) 99999-0000</p>
-              </div>
-            </div>
-            <div class="contact-item">
-              <span class="contact-icon">◈</span>
-              <div>
-                <strong>Horário de Funcionamento</strong>
-                <p>Seg–Sex: 9h às 20h<br>Sáb: 9h às 18h</p>
-              </div>
-            </div>
+      <!-- COLUNA ESQUERDA: informações -->
+      <div>
+        <h2 class="info-titulo">Estamos aqui para você.</h2>
+        <p class="info-texto">Escolha o serviço e a data que preferir. Nossa equipe entrará em contato pelo WhatsApp para confirmar o horário disponível.</p>
+
+        <div class="info-item">
+          <span class="info-icone">◎</span>
+          <div>
+            <strong>Endereço</strong>
+            <p>Rua dos Barbeiros, 123 — Centro<br>São Paulo, SP</p>
+          </div>
+        </div>
+        <div class="info-item">
+          <span class="info-icone">◉</span>
+          <div>
+            <strong>WhatsApp</strong>
+            <p>(11) 99999-0000</p>
+          </div>
+        </div>
+        <div class="info-item">
+          <span class="info-icone">◈</span>
+          <div>
+            <strong>Horário de Atendimento</strong>
+            <p>Seg–Sex: 9h às 20h<br>Sábado: 9h às 18h</p>
           </div>
         </div>
 
-        <div class="contact-form-wrapper" data-animate>
-          <!--
-            O formulário usa o evento "submit" capturado pelo JS.
-            O atributo "id" é importante — o JS usa document.getElementById()
-            para encontrar este formulário pelo ID.
-          -->
-          <form id="contactForm" class="contact-form">
-            <div class="form-group">
-              <label for="name">Nome completo</label>
-              <input type="text" id="name" name="name" placeholder="Seu nome" required>
-            </div>
-            <div class="form-group">
-              <label for="phone">WhatsApp</label>
-              <input type="tel" id="phone" name="phone" placeholder="(11) 99999-0000" required>
-            </div>
-            <div class="form-group">
-              <label for="service">Serviço desejado</label>
-              <select id="service" name="service" required>
-                <option value="" disabled selected>Selecione um serviço</option>
-                <option value="corte">Corte Clássico — R$ 45</option>
-                <option value="barba">Barba Completa — R$ 35</option>
-                <option value="combo">Corte + Barba — R$ 70</option>
-                <option value="relaxamento">Relaxamento — R$ 55</option>
-                <option value="pigmentacao">Pigmentação — R$ 120</option>
-                <option value="vip">Pacote VIP — R$ 150</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="date">Data preferida</label>
-              <input type="date" id="date" name="date" required>
-            </div>
-            <div class="form-group">
-              <label for="message">Observações (opcional)</label>
-              <textarea id="message" name="message" placeholder="Alguma preferência ou informação adicional?" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full">Enviar Agendamento</button>
+        <div class="servicos-resumo">
+          <h3>Tabela de preços</h3>
+          <div class="servico-linha"><span>Corte Clássico</span><span>R$ 45</span></div>
+          <div class="servico-linha"><span>Barba Completa</span><span>R$ 35</span></div>
+          <div class="servico-linha"><span>Corte + Barba</span><span>R$ 70</span></div>
+          <div class="servico-linha"><span>Relaxamento</span><span>R$ 55</span></div>
+          <div class="servico-linha"><span>Pigmentação</span><span>R$ 120</span></div>
+          <div class="servico-linha"><span>Pacote VIP</span><span>R$ 150</span></div>
+        </div>
+      </div>
 
-            <!-- Mensagem de sucesso — aparece após envio, gerenciada pelo JS -->
-            <div id="formSuccess" class="form-success" style="display:none;">
-              ✦ Agendamento enviado! Entraremos em contato em breve.
-            </div>
-          </form>
+      <!-- COLUNA DIREITA: formulário -->
+      <div class="form-card">
+
+        <!-- Saudação personalizada — preenchida pelo JS -->
+        <div class="saudacao">
+          <div class="saudacao-foto" id="saudacaoFotoWrap">
+            <span id="saudacaoInicial" style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:0.75rem;color:#888;">?</span>
+          </div>
+          <div class="saudacao-texto">
+            <strong id="saudacaoNome">Olá!</strong>
+            <span>Preencha o formulário para agendar.</span>
+          </div>
         </div>
 
+        <!-- FORMULÁRIO DE AGENDAMENTO -->
+        <form class="formulario" id="formAgenda">
+
+          <!-- Nome vem preenchido da conta do usuário, mas pode ser editado -->
+          <div class="campo">
+            <label for="nome">Nome completo</label>
+            <input type="text" id="nome" name="nome" placeholder="Seu nome" required>
+          </div>
+
+          <!-- Telefone: preenchimento manual sempre -->
+          <div class="campo">
+            <label for="telefone">WhatsApp para confirmação</label>
+            <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-0000" required>
+          </div>
+
+          <div class="campo">
+            <label for="servico">Serviço desejado</label>
+            <select id="servico" name="servico" required>
+              <option value="" disabled selected>Selecione um serviço</option>
+              <option value="corte">Corte Clássico — R$ 45</option>
+              <option value="barba">Barba Completa — R$ 35</option>
+              <option value="combo">Corte + Barba — R$ 70</option>
+              <option value="relaxamento">Relaxamento — R$ 55</option>
+              <option value="pigmentacao">Pigmentação — R$ 120</option>
+              <option value="vip">Pacote VIP — R$ 150</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="data">Data preferida</label>
+            <input type="date" id="data" name="data" required>
+          </div>
+
+          <div class="campo">
+            <label for="obs">Observações (opcional)</label>
+            <textarea id="obs" name="obs" placeholder="Alguma preferência de horário ou informação adicional?" rows="3"></textarea>
+          </div>
+
+          <button type="submit" class="btn-primario" id="btnEnviar">
+            Enviar Agendamento
+          </button>
+
+          <!-- Mensagem de sucesso -->
+          <div class="msg-sucesso" id="msgSucesso">
+            <strong>✦ Agendamento recebido!</strong>
+            Entraremos em contato pelo WhatsApp em breve para confirmar o horário.
+          </div>
+
+        </form>
       </div>
+
     </div>
-  </section>
+  </div>
+
+  <script>
+    // ============================================================
+    // Carrega os dados do usuário logado e preenche a interface
+    // ============================================================
+    //
+    // fetch('/api/usuario') chama a rota que criamos no server.js.
+    // Ela retorna um JSON com os dados do usuário logado.
+    // Como é uma chamada assíncrona, usamos .then() para esperar.
+    // ============================================================
+
+    fetch('/api/usuario')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.logado) {
+          // Se por algum motivo não está logado, redireciona
+          window.location.href = '/login';
+          return;
+        }
+
+        const u = data.usuario;
+
+        // Preenche o nome no campo do formulário
+        document.getElementById('nome').value = u.nome || '';
+
+        // Preenche o nome na navbar e na saudação
+        document.getElementById('usuarioNome').textContent = u.nome || u.email;
+        document.getElementById('saudacaoNome').textContent = `Olá, ${u.nome?.split(' ')[0] || 'cliente'}!`;
+
+        // Mostra a inicial do nome quando não tem foto
+        const inicial = (u.nome || u.email || '?')[0].toUpperCase();
+
+        if (u.foto) {
+          // Usuário tem foto (veio do Google)
+          // Navbar
+          document.getElementById('usuarioFotoWrap').innerHTML =
+            `<img src="${u.foto}" alt="${u.nome}" style="width:100%;height:100%;object-fit:cover;">`;
+          // Saudação
+          document.getElementById('saudacaoFotoWrap').innerHTML =
+            `<img src="${u.foto}" alt="${u.nome}" style="width:100%;height:100%;object-fit:cover;">`;
+        } else {
+          // Sem foto: mostra inicial
+          document.getElementById('usuarioInicial').textContent = inicial;
+          document.getElementById('saudacaoInicial').textContent = inicial;
+        }
+      })
+      .catch(() => window.location.href = '/login');
+
+    // ====== Data mínima (sem datas no passado) ======
+    const dataInput = document.getElementById('data');
+    dataInput.min = new Date().toISOString().split('T')[0];
+
+    // ====== Formulário ======
+    const form     = document.getElementById('formAgenda');
+    const btnEnviar = document.getElementById('btnEnviar');
+    const msgSucesso = document.getElementById('msgSucesso');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // Coleta os dados do formulário
+      const dados = {
+        nome:     document.getElementById('nome').value,
+        telefone: document.getElementById('telefone').value,
+        servico:  document.getElementById('servico').value,
+        data:     document.getElementById('data').value,
+        obs:      document.getElementById('obs').value,
+      };
+
+      console.log('Agendamento:', dados);
+
+      // Simula envio (troque por fetch('/api/agendar', ...) no futuro)
+      btnEnviar.textContent = 'Enviando...';
+      btnEnviar.disabled = true;
+
+      setTimeout(() => {
+        form.style.opacity = '0';
+        form.style.transition = '0.3s ease';
+        setTimeout(() => {
+          form.style.display = 'none';
+          msgSucesso.style.display = 'block';
+        }, 300);
+      }, 1500);
+    });
+  </script>
+
+</body>
+</html>

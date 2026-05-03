@@ -342,7 +342,7 @@ ul {
 }
 
 .hero-content {
-  position: absolute; /* Para ficar na frente do overlay */
+  position: absolute; 
   z-index: 2;
   max-width: var(--max-width);
   margin: 0 auto;

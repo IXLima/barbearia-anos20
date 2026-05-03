@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Corte & Arte</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --preto: #0a0a0a; --escuro: #111; --card: #161616;
+      --borda: #2a2a2a; --mudo: #555; --meio: #888;
+      --branco: #f5f5f0; --puro: #fff;
+      --fonte-titulo: 'Cormorant Garant', Georgia, serif;
+      --fonte-mono: 'DM Mono', 'Courier New', monospace;
+      --t: 0.25s ease;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--preto);
+      color: var(--branco);
+      font-family: var(--fonte-mono);
+      display: flex;
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ====== LADO ESQUERDO — imagem decorativa ====== */
+    .auth-visual {
+      flex: 1;
+      position: relative;
+      display: none; /* esconde no mobile */
+      background-image: url('https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=900&auto=format&fit=crop&q=80');
+      background-size: cover;
+      background-position: center;
+    }
+    @media (min-width: 900px) { .auth-visual { display: block; } }
+    .auth-visual-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0.4) 100%);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 48px;
+    }
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--fonte-mono); font-size: 0.8rem;
+      font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase;
+    }
+    .auth-visual-quote {
+      font-family: var(--fonte-titulo); font-size: 2.4rem;
+      font-weight: 300; line-height: 1.2; color: var(--puro);
+    }
+    .auth-visual-quote em { font-style: italic; color: var(--meio); }
+
+    /* ====== LADO DIREITO — formulário ====== */
+    .auth-form-side {
+      width: 100%; max-width: 480px;
+      background: var(--escuro);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px 40px;
+    }
+    @media (max-width: 899px) { .auth-form-side { max-width: 100%; } }
+
+    .auth-form-inner { width: 100%; max-width: 360px; }
+
+    .auth-title {
+      font-family: var(--fonte-titulo); font-size: 2.4rem;
+      font-weight: 300; line-height: 1.1; color: var(--puro);
+      margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .auth-subtitle {
+      font-size: 0.78rem; color: var(--meio); margin-bottom: 36px; line-height: 1.6;
+    }
+    .auth-subtitle a { color: var(--branco); border-bottom: 1px solid var(--borda); transition: border-color var(--t); }
+    .auth-subtitle a:hover { border-color: var(--branco); }
+
+    /* ====== Mensagens de erro / aviso ====== */
+    .mensagem {
+      padding: 12px 16px; margin-bottom: 24px;
+      font-size: 0.75rem; letter-spacing: 0.05em; line-height: 1.5;
+      border: 1px solid var(--borda);
+    }
+    .mensagem.erro { border-color: #c0392b; color: #e74c3c; background: rgba(192,57,43,0.08); }
+    .mensagem.aviso { border-color: #7f8c8d; color: var(--meio); }
+    .mensagem.sucesso { border-color: #27ae60; color: #2ecc71; background: rgba(39,174,96,0.08); }
+
+    /* ====== Botão Google ====== */
+    .btn-google {
+      width: 100%; padding: 13px 20px;
+      background: var(--card); border: 1px solid var(--borda);
+      color: var(--branco); font-family: var(--fonte-mono);
+      font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      gap: 12px; transition: all var(--t); margin-bottom: 28px;
+    }
+    .btn-google:hover { background: #1e1e1e; border-color: var(--meio); }
+    .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* ====== Divisor "ou" ====== */
+    .divisor {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 24px; color: var(--mudo);
+      font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .divisor::before, .divisor::after {
+      content: ''; flex: 1; height: 1px; background: var(--borda);
+    }
+
+    /* ====== Campos do formulário ====== */
+    .campo { margin-bottom: 20px; }
+    .campo label {
+      display: block; font-size: 0.68rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--meio); margin-bottom: 7px;
+    }
+    .campo input {
+      width: 100%; background: transparent;
+      border: none; border-bottom: 1px solid var(--borda);
+      color: var(--branco); font-family: var(--fonte-mono);
+      font-size: 0.85rem; padding: 10px 0; outline: none;
+      transition: border-color var(--t);
+    }
+    .campo input:focus { border-bottom-color: var(--branco); }
+    .campo input::placeholder { color: var(--mudo); }
+
+    /* ====== Botão principal ====== */
+    .btn-primario {
+      width: 100%; padding: 14px;
+      background: var(--puro); color: var(--preto);
+      border: none; font-family: var(--fonte-mono);
+      font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer; transition: all var(--t); margin-top: 8px;
+    }
+    .btn-primario:hover { background: transparent; color: var(--puro); outline: 1px solid var(--puro); }
+
+    /* ====== Link de rodapé ====== */
+    .auth-rodape {
+      margin-top: 28px; text-align: center;
+      font-size: 0.72rem; color: var(--mudo);
+    }
+    .auth-rodape a { color: var(--branco); border-bottom: 1px solid var(--borda); transition: border-color var(--t); }
+    .auth-rodape a:hover { border-color: var(--branco); }
+
+    .voltar {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--mudo); margin-top: 32px; transition: color var(--t);
+    }
+    .voltar:hover { color: var(--branco); }
+  </style>
+</head>
+<body>
+
+  <!-- LADO ESQUERDO: imagem + citação decorativa -->
+  <div class="auth-visual">
+    <div class="auth-visual-overlay">
+      <div class="auth-logo">
+        <span>✦</span> CORTE &amp; ARTE
+      </div>
+      <div>
+        <p class="auth-visual-quote">
+          "O estilo<br>começa <em>aqui.</em>"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LADO DIREITO: formulário de login -->
+  <div class="auth-form-side">
+    <div class="auth-form-inner">
+
+      <!-- Logo (só aparece no mobile, quando a imagem some) -->
+      <div class="auth-logo" style="margin-bottom:32px;display:none;" id="logoMobile">
+        <span>✦</span> CORTE &amp; ARTE
+      </div>
+
+      <h1 class="auth-title">Bem-vindo<br>de volta.</h1>
+      <p class="auth-subtitle">
+        Não tem conta? <a href="/registro">Criar conta grátis →</a>
+      </p>
+
+      <!-- Mensagem dinâmica (erro, aviso) lida da URL pelo JS -->
+      <div id="mensagem" style="display:none;"></div>
+
+      <!-- BOTÃO GOOGLE -->
+      <!--
+        Este link /auth/google inicia o fluxo OAuth no servidor.
+        O servidor (server.js) redireciona para o Google.
+        O Google, após o login, retorna para /auth/google/callback.
+        É um <a> e não um <button> porque a navegação é do lado do servidor.
+      -->
+      <a href="/auth/google" class="btn-google">
+        <!-- Logo oficial do Google em SVG -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Entrar com Google
+      </a>
+
+      <!-- DIVISOR -->
+      <div class="divisor">ou</div>
+
+      <!-- FORMULÁRIO EMAIL/SENHA -->
+      <!--
+        action="/auth/local" → envia os dados para esta rota no server.js
+        method="POST" → envia os dados no corpo da requisição (não na URL)
+        O Passport intercepta esta rota e faz a verificação.
+      -->
+      <form action="/auth/local" method="POST">
+        <div class="campo">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="seu@email.com"
+            required
+            autocomplete="email"
+          >
+        </div>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input
+            type="password"
+            id="senha"
+            name="senha"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+        <button type="submit" class="btn-primario">Entrar</button>
+      </form>
+
+      <p class="auth-rodape">
+        Não tem conta? <a href="/registro">Criar conta</a>
+      </p>
+
+      <a href="/" class="voltar">← Voltar para o site</a>
+
+    </div>
+  </div>
+
+  <script>
+    // Lê os parâmetros da URL para mostrar mensagens
+    // Exemplo: /login?erro=credenciais mostra mensagem de erro
+    const params = new URLSearchParams(window.location.search);
+    const msgEl  = document.getElementById('mensagem');
+
+    const erros = {
+      'credenciais': 'Email ou senha incorretos. Tente novamente.',
+      'google':      'Erro ao autenticar com Google. Tente novamente.',
+      'generico':    'Ocorreu um erro. Tente novamente.'
+    };
+    const avisos = {
+      'entre-para-agendar': '✦ Faça login para acessar o agendamento.',
+      'desconectado':       'Você saiu com sucesso.'
+    };
+
+    const erro  = params.get('erro');
+    const aviso = params.get('aviso');
+
+    if (erro && erros[erro]) {
+      msgEl.className = 'mensagem erro';
+      msgEl.textContent = erros[erro];
+      msgEl.style.display = 'block';
+    } else if (aviso && avisos[aviso]) {
+      msgEl.className = 'mensagem aviso';
+      msgEl.textContent = avisos[aviso];
+      msgEl.style.display = 'block';
+    }
+
+    // Mostra logo no mobile
+    if (window.innerWidth < 900) {
+      document.getElementById('logoMobile').style.display = 'flex';
+    }
+  </script>
+
+</body>
+</html>

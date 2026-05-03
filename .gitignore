@@ -15,6 +15,13 @@ node_modules/
 .env.local
 
 # =========================================================================
+# IGNORAR BANCOS DE DADOS LOCAIS E DADOS DE USUÁRIOS (CRÍTICO)
+# =========================================================================
+# Arquivos que armazenam informações de clientes, tokens ou agendamentos.
+# Evita o vazamento de informações sensíveis (PII) no repositório público.
+users.json
+
+# =========================================================================
 # IGNORAR LOGS DE ERRO
 # =========================================================================
 # Em testes de invasão (pentest), arquivos de log são minas de ouro porque 

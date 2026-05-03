@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar Conta — Corte & Arte</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --preto: #0a0a0a; --escuro: #111; --card: #161616;
+      --borda: #2a2a2a; --mudo: #555; --meio: #888;
+      --branco: #f5f5f0; --puro: #fff;
+      --fonte-titulo: 'Cormorant Garant', Georgia, serif;
+      --fonte-mono: 'DM Mono', 'Courier New', monospace;
+      --t: 0.25s ease;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--preto); color: var(--branco);
+      font-family: var(--fonte-mono);
+      display: flex; min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    .auth-visual {
+      flex: 1; position: relative; display: none;
+      background-image: url('https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=900&auto=format&fit=crop&q=80');
+      background-size: cover; background-position: center top;
+    }
+    @media (min-width: 900px) { .auth-visual { display: block; } }
+    .auth-visual-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0.4) 100%);
+      display: flex; flex-direction: column;
+      justify-content: space-between; padding: 48px;
+    }
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--fonte-mono); font-size: 0.8rem;
+      font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase;
+    }
+    .auth-visual-quote {
+      font-family: var(--fonte-titulo); font-size: 2.4rem;
+      font-weight: 300; line-height: 1.2; color: var(--puro);
+    }
+    .auth-visual-quote em { font-style: italic; color: var(--meio); }
+
+    .auth-form-side {
+      width: 100%; max-width: 480px;
+      background: var(--escuro);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px 40px; overflow-y: auto;
+    }
+    @media (max-width: 899px) { .auth-form-side { max-width: 100%; } }
+
+    .auth-form-inner { width: 100%; max-width: 360px; }
+
+    .auth-title {
+      font-family: var(--fonte-titulo); font-size: 2.4rem;
+      font-weight: 300; line-height: 1.1; color: var(--puro);
+      margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .auth-subtitle {
+      font-size: 0.78rem; color: var(--meio); margin-bottom: 32px; line-height: 1.6;
+    }
+    .auth-subtitle a { color: var(--branco); border-bottom: 1px solid var(--borda); transition: border-color var(--t); }
+    .auth-subtitle a:hover { border-color: var(--branco); }
+
+    .mensagem {
+      padding: 12px 16px; margin-bottom: 20px;
+      font-size: 0.75rem; letter-spacing: 0.05em; line-height: 1.5;
+      border: 1px solid var(--borda);
+    }
+    .mensagem.erro  { border-color: #c0392b; color: #e74c3c; background: rgba(192,57,43,0.08); }
+    .mensagem.aviso { border-color: #7f8c8d; color: var(--meio); }
+
+    .btn-google {
+      width: 100%; padding: 13px 20px;
+      background: var(--card); border: 1px solid var(--borda);
+      color: var(--branco); font-family: var(--fonte-mono);
+      font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      gap: 12px; transition: all var(--t); margin-bottom: 24px;
+    }
+    .btn-google:hover { background: #1e1e1e; border-color: var(--meio); }
+    .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .divisor {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 20px; color: var(--mudo);
+      font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .divisor::before, .divisor::after { content: ''; flex: 1; height: 1px; background: var(--borda); }
+
+    .campo { margin-bottom: 18px; }
+    .campo label {
+      display: block; font-size: 0.68rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--meio); margin-bottom: 7px;
+    }
+    .campo input {
+      width: 100%; background: transparent;
+      border: none; border-bottom: 1px solid var(--borda);
+      color: var(--branco); font-family: var(--fonte-mono);
+      font-size: 0.85rem; padding: 10px 0; outline: none;
+      transition: border-color var(--t);
+    }
+    .campo input:focus { border-bottom-color: var(--branco); }
+    .campo input::placeholder { color: var(--mudo); }
+
+    /* Indicador de força da senha */
+    .forca-senha { margin-top: 8px; }
+    .forca-barra { height: 2px; background: var(--borda); margin-bottom: 4px; }
+    .forca-fill {
+      height: 100%; width: 0;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+    .forca-texto { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--mudo); }
+
+    .campo-dica { font-size: 0.65rem; color: var(--mudo); margin-top: 5px; letter-spacing: 0.05em; }
+
+    .btn-primario {
+      width: 100%; padding: 14px;
+      background: var(--puro); color: var(--preto);
+      border: none; font-family: var(--fonte-mono);
+      font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer; transition: all var(--t); margin-top: 8px;
+    }
+    .btn-primario:hover { background: transparent; color: var(--puro); outline: 1px solid var(--puro); }
+
+    .termos {
+      font-size: 0.68rem; color: var(--mudo); margin-top: 14px;
+      text-align: center; line-height: 1.5;
+    }
+    .termos a { color: var(--meio); border-bottom: 1px solid transparent; transition: border-color var(--t); }
+    .termos a:hover { border-color: var(--meio); }
+
+    .auth-rodape { margin-top: 24px; text-align: center; font-size: 0.72rem; color: var(--mudo); }
+    .auth-rodape a { color: var(--branco); border-bottom: 1px solid var(--borda); transition: border-color var(--t); }
+    .auth-rodape a:hover { border-color: var(--branco); }
+
+    .voltar {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--mudo); margin-top: 28px; transition: color var(--t);
+    }
+    .voltar:hover { color: var(--branco); }
+  </style>
+</head>
+<body>
+
+  <!-- LADO ESQUERDO -->
+  <div class="auth-visual">
+    <div class="auth-visual-overlay">
+      <div class="auth-logo"><span>✦</span> CORTE &amp; ARTE</div>
+      <div>
+        <p class="auth-visual-quote">
+          "Sua primeira<br>visita começa <em>aqui.</em>"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LADO DIREITO -->
+  <div class="auth-form-side">
+    <div class="auth-form-inner">
+
+      <div class="auth-logo" style="margin-bottom:32px;display:none;" id="logoMobile">
+        <span>✦</span> CORTE &amp; ARTE
+      </div>
+
+      <h1 class="auth-title">Criar<br>sua conta.</h1>
+      <p class="auth-subtitle">
+        Já tem conta? <a href="/login">Entrar →</a>
+      </p>
+
+      <div id="mensagem" style="display:none;"></div>
+
+      <!-- GOOGLE -->
+      <a href="/auth/google" class="btn-google">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Registrar com Google
+      </a>
+
+      <div class="divisor">ou crie com email</div>
+
+      <!--
+        action="/auth/registro" → rota POST no server.js
+        O servidor valida os dados, cria o usuário e já faz login
+      -->
+      <form action="/auth/registro" method="POST">
+        <div class="campo">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" name="nome" placeholder="Seu nome completo" required autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="seu@email.com" required autocomplete="email">
+        </div>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
+          <!-- Barra de força da senha — atualizada pelo JS -->
+          <div class="forca-senha">
+            <div class="forca-barra"><div class="forca-fill" id="forcaFill"></div></div>
+            <span class="forca-texto" id="forcaTexto"></span>
+          </div>
+          <p class="campo-dica">Mínimo 6 caracteres</p>
+        </div>
+        <div class="campo">
+          <label for="confirmarSenha">Confirmar senha</label>
+          <input type="password" id="confirmarSenha" name="confirmarSenha" placeholder="Repita a senha" required autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-primario">Criar conta</button>
+      </form>
+
+      <p class="termos">
+        Ao criar uma conta você concorda com os nossos<br>
+        <a href="#">termos de uso</a> e <a href="#">política de privacidade</a>.
+      </p>
+
+      <p class="auth-rodape">Já tem conta? <a href="/login">Entrar</a></p>
+      <a href="/" class="voltar">← Voltar para o site</a>
+
+    </div>
+  </div>
+
+  <script>
+    // ====== Mensagens de erro da URL ======
+    const params = new URLSearchParams(window.location.search);
+    const msgEl  = document.getElementById('mensagem');
+
+    const erros = {
+      'campos-obrigatorios': 'Preencha todos os campos obrigatórios.',
+      'senhas-diferentes':   'As senhas não coincidem. Verifique e tente de novo.',
+      'senha-curta':         'A senha precisa ter pelo menos 6 caracteres.',
+      'email-em-uso':        'Este email já está cadastrado. Tente fazer login.',
+      'generico':            'Ocorreu um erro. Tente novamente.'
+    };
+
+    const erro = params.get('erro');
+    if (erro && erros[erro]) {
+      msgEl.className = 'mensagem erro';
+      msgEl.textContent = erros[erro];
+      msgEl.style.display = 'block';
+    }
+
+    // ====== Indicador de força da senha ======
+    // Avalia a senha em tempo real conforme o usuário digita
+    const senhaInput  = document.getElementById('senha');
+    const forcaFill   = document.getElementById('forcaFill');
+    const forcaTexto  = document.getElementById('forcaTexto');
+
+    senhaInput.addEventListener('input', () => {
+      const senha = senhaInput.value;
+      let forca = 0;
+      let texto  = '';
+      let cor    = '';
+
+      if (senha.length >= 6)  forca++; // Comprimento mínimo
+      if (senha.length >= 10) forca++; // Comprimento bom
+      if (/[A-Z]/.test(senha)) forca++; // Tem letra maiúscula
+      if (/[0-9]/.test(senha)) forca++; // Tem número
+      if (/[^A-Za-z0-9]/.test(senha)) forca++; // Tem caractere especial
+
+      if (senha.length === 0) {
+        forcaFill.style.width = '0';
+        forcaTexto.textContent = '';
+        return;
+      }
+
+      if (forca <= 1) { texto = 'Fraca';   cor = '#e74c3c'; }
+      else if (forca <= 2) { texto = 'Regular'; cor = '#f39c12'; }
+      else if (forca <= 3) { texto = 'Boa';     cor = '#3498db'; }
+      else { texto = 'Forte';  cor = '#27ae60'; }
+
+      forcaFill.style.width  = `${(forca / 5) * 100}%`;
+      forcaFill.style.background = cor;
+      forcaTexto.style.color = cor;
+      forcaTexto.textContent = `Força: ${texto}`;
+    });
+
+    // ====== Verificação em tempo real das senhas ======
+    const confirmarInput = document.getElementById('confirmarSenha');
+
+    confirmarInput.addEventListener('input', () => {
+      if (confirmarInput.value && confirmarInput.value !== senhaInput.value) {
+        confirmarInput.style.borderBottomColor = '#e74c3c';
+      } else {
+        confirmarInput.style.borderBottomColor = '';
+      }
+    });
+
+    // Mobile logo
+    if (window.innerWidth < 900) {
+      document.getElementById('logoMobile').style.display = 'flex';
+    }
+  </script>
+
+</body>
+</html>
