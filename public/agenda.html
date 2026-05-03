@@ -1,0 +1,132 @@
+ <!DOCTYPE html>
+<html lang="pt-BR">
+<!--
+  ============================================================
+  index.html — A estrutura do site
+  ============================================================
+  O HTML define O QUÊ existe na página.
+  O CSS (style.css) define COMO cada coisa aparece.
+  O JS (main.js) define O QUE ACONTECE quando o usuário interage.
+
+  Seções deste site:
+  1. <head>       — Metadados, fontes, link para o CSS
+  2. #navbar      — Barra de navegação fixa no topo
+  3. #hero        — Seção principal / capa
+  4. #services    — Serviços oferecidos
+  5. #about       — Sobre a barbearia
+  6. #gallery     — Galeria de fotos
+  7. #contact     — Contato / agendamento
+  8. <footer>     — Rodapé
+  ============================================================
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento</title>
+  
+
+  <!--
+    Google Fonts: importando fontes externas.
+    - Cormorant Garant: fonte serifada elegante, usada nos títulos
+    - DM Mono: fonte monoespaçada para detalhes e textos menores
+    Se quiser trocar, acesse fonts.google.com e substitua os nomes
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Link para o arquivo CSS. O navegador vai procurar em public/css/style.css -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+ 
+ 
+ 
+ 
+ <section id="contact">
+    <div class="container">
+      <div class="contact-grid">
+
+        <div class="contact-info" data-animate>
+          <p class="section-label">— Fale conosco</p>
+          <h2 class="section-title">Agende seu<br>horário.</h2>
+          <p class="contact-text">
+            Entre em contato pelo formulário ou pelos
+            nossos canais diretos. Respondemos sempre
+            com rapidez.
+          </p>
+
+          <!-- Altere os dados de contato aqui -->
+          <div class="contact-details">
+            <div class="contact-item">
+              <span class="contact-icon">◎</span>
+              <div>
+                <strong>Endereço</strong>
+                <p>Rua dos Barbeiros, 123 — Centro<br>São Paulo, SP</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">◉</span>
+              <div>
+                <strong>Telefone / WhatsApp</strong>
+                <p>(11) 99999-0000</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">◈</span>
+              <div>
+                <strong>Horário de Funcionamento</strong>
+                <p>Seg–Sex: 9h às 20h<br>Sáb: 9h às 18h</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-form-wrapper" data-animate>
+          <!--
+            O formulário usa o evento "submit" capturado pelo JS.
+            O atributo "id" é importante — o JS usa document.getElementById()
+            para encontrar este formulário pelo ID.
+          -->
+          <form id="contactForm" class="contact-form">
+            <div class="form-group">
+              <label for="name">Nome completo</label>
+              <input type="text" id="name" name="name" placeholder="Seu nome" required>
+            </div>
+            <div class="form-group">
+              <label for="phone">WhatsApp</label>
+              <input type="tel" id="phone" name="phone" placeholder="(11) 99999-0000" required>
+            </div>
+            <div class="form-group">
+              <label for="service">Serviço desejado</label>
+              <select id="service" name="service" required>
+                <option value="" disabled selected>Selecione um serviço</option>
+                <option value="corte">Corte Clássico — R$ 45</option>
+                <option value="barba">Barba Completa — R$ 35</option>
+                <option value="combo">Corte + Barba — R$ 70</option>
+                <option value="relaxamento">Relaxamento — R$ 55</option>
+                <option value="pigmentacao">Pigmentação — R$ 120</option>
+                <option value="vip">Pacote VIP — R$ 150</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="date">Data preferida</label>
+              <input type="date" id="date" name="date" required>
+            </div>
+            <div class="form-group">
+              <label for="message">Observações (opcional)</label>
+              <textarea id="message" name="message" placeholder="Alguma preferência ou informação adicional?" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Enviar Agendamento</button>
+
+            <!-- Mensagem de sucesso — aparece após envio, gerenciada pelo JS -->
+            <div id="formSuccess" class="form-success" style="display:none;">
+              ✦ Agendamento enviado! Entraremos em contato em breve.
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>

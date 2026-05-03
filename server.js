@@ -58,6 +58,10 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
+app.get('/agenda', (req, res) => {
+  res.sendFile(__dirname + '/public/agenda.html');
+});
+
 // ============================================================
 // INICIANDO O SERVIDOR
 // ============================================================

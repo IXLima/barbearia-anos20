@@ -64,7 +64,7 @@
         <li><a href="#services">Serviços</a></li>
         <li><a href="#about">Sobre</a></li>
         <li><a href="#gallery">Galeria</a></li>
-        <li><a href="#contact" class="nav-cta">Agendar</a></li>
+        <li><a href="/agenda" class="nav-cta">Agendar</a></li>
       </ul>
 
       <!-- Botão hambúrguer para mobile — aparece só em telas pequenas -->
@@ -302,100 +302,6 @@
         <div class="gallery-overlay">
           <span>Ferramentas Premium</span>
         </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- =====================================================
-    CONTACT — Contato e Agendamento
-    Formulário simples. O JS captura o envio e mostra
-    uma mensagem de sucesso (sem backend real, por enquanto).
-    Para conectar a um backend real, veja os comentários no main.js.
-  ====================================================== -->
-  <section id="contact">
-    <div class="container">
-      <div class="contact-grid">
-
-        <div class="contact-info" data-animate>
-          <p class="section-label">— Fale conosco</p>
-          <h2 class="section-title">Agende seu<br>horário.</h2>
-          <p class="contact-text">
-            Entre em contato pelo formulário ou pelos
-            nossos canais diretos. Respondemos sempre
-            com rapidez.
-          </p>
-
-          <!-- Altere os dados de contato aqui -->
-          <div class="contact-details">
-            <div class="contact-item">
-              <span class="contact-icon">◎</span>
-              <div>
-                <strong>Endereço</strong>
-                <p>Rua dos Barbeiros, 123 — Centro<br>São Paulo, SP</p>
-              </div>
-            </div>
-            <div class="contact-item">
-              <span class="contact-icon">◉</span>
-              <div>
-                <strong>Telefone / WhatsApp</strong>
-                <p>(11) 99999-0000</p>
-              </div>
-            </div>
-            <div class="contact-item">
-              <span class="contact-icon">◈</span>
-              <div>
-                <strong>Horário de Funcionamento</strong>
-                <p>Seg–Sex: 9h às 20h<br>Sáb: 9h às 18h</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="contact-form-wrapper" data-animate>
-          <!--
-            O formulário usa o evento "submit" capturado pelo JS.
-            O atributo "id" é importante — o JS usa document.getElementById()
-            para encontrar este formulário pelo ID.
-          -->
-          <form id="contactForm" class="contact-form">
-            <div class="form-group">
-              <label for="name">Nome completo</label>
-              <input type="text" id="name" name="name" placeholder="Seu nome" required>
-            </div>
-            <div class="form-group">
-              <label for="phone">WhatsApp</label>
-              <input type="tel" id="phone" name="phone" placeholder="(11) 99999-0000" required>
-            </div>
-            <div class="form-group">
-              <label for="service">Serviço desejado</label>
-              <select id="service" name="service" required>
-                <option value="" disabled selected>Selecione um serviço</option>
-                <option value="corte">Corte Clássico — R$ 45</option>
-                <option value="barba">Barba Completa — R$ 35</option>
-                <option value="combo">Corte + Barba — R$ 70</option>
-                <option value="relaxamento">Relaxamento — R$ 55</option>
-                <option value="pigmentacao">Pigmentação — R$ 120</option>
-                <option value="vip">Pacote VIP — R$ 150</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="date">Data preferida</label>
-              <input type="date" id="date" name="date" required>
-            </div>
-            <div class="form-group">
-              <label for="message">Observações (opcional)</label>
-              <textarea id="message" name="message" placeholder="Alguma preferência ou informação adicional?" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full">Enviar Agendamento</button>
-
-            <!-- Mensagem de sucesso — aparece após envio, gerenciada pelo JS -->
-            <div id="formSuccess" class="form-success" style="display:none;">
-              ✦ Agendamento enviado! Entraremos em contato em breve.
-            </div>
-          </form>
-        </div>
-
       </div>
     </div>
   </section>
