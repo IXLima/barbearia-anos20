@@ -82,11 +82,11 @@ const mobileMenu = document.getElementById('mobileMenu');
 
 hamburger.addEventListener('click', () => {
   // Alterna a classe 'active' no menu
-  mobileMenu.classList.toggle('active');
+  mobileMenu.classList.toggle("active");
 
   // Muda a aparência do botão hambúrguer quando aberto
   // classList.contains() verifica se a classe existe
-  const isOpen = mobileMenu.classList.contains('active');
+  const isOpen = mobileMenu.classList.contains("active");
   hamburger.setAttribute('aria-expanded', isOpen); // Acessibilidade
 });
 
