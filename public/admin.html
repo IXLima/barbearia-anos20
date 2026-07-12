@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Painel administrativo — Barbearia Nogueira</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span aria-hidden="true">✦</span>
+      <span>BARBEARIA NOGUEIRA</span>
+    </a>
+
+    <div class="user-area">
+      <div>
+        <span class="user-label">Administrador</span>
+        <strong id="adminName">Carregando...</strong>
+      </div>
+      <a class="button button--ghost" href="/auth/logout">Sair</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">— Painel administrativo</p>
+        <h1>Agenda da <em>barbearia.</em></h1>
+        <p class="page-description">
+          Consulte o movimento do dia, acompanhe a semana e atualize cada atendimento.
+        </p>
+      </div>
+
+      <button id="refreshButton" class="button button--primary" type="button">
+        Atualizar agenda
+      </button>
+    </section>
+
+    <section class="metrics" aria-label="Resumo dos agendamentos">
+      <article class="metric-card">
+        <span>Hoje</span>
+        <strong id="metricToday">0</strong>
+        <small>atendimentos</small>
+      </article>
+      <article class="metric-card">
+        <span>Pendentes</span>
+        <strong id="metricPending">0</strong>
+        <small>aguardando confirmação</small>
+      </article>
+      <article class="metric-card">
+        <span>Confirmados</span>
+        <strong id="metricConfirmed">0</strong>
+        <small>na semana</small>
+      </article>
+      <article class="metric-card">
+        <span>Faturamento previsto</span>
+        <strong id="metricRevenue">R$ 0</strong>
+        <small>agenda exibida</small>
+      </article>
+    </section>
+
+    <section class="toolbar">
+      <div class="view-switch" role="tablist" aria-label="Tipo de visualização">
+        <button
+          id="dailyTab"
+          class="view-button active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+        >
+          Dia
+        </button>
+        <button
+          id="weeklyTab"
+          class="view-button"
+          type="button"
+          role="tab"
+          aria-selected="false"
+        >
+          Semana
+        </button>
+      </div>
+
+      <div class="date-controls">
+        <button id="previousButton" class="icon-button" type="button" aria-label="Período anterior">
+          ←
+        </button>
+
+        <label class="date-field">
+          <span>Data de referência</span>
+          <input id="referenceDate" type="date">
+        </label>
+
+        <button id="nextButton" class="icon-button" type="button" aria-label="Próximo período">
+          →
+        </button>
+      </div>
+
+      <label class="filter-field">
+        <span>Status</span>
+        <select id="statusFilter">
+          <option value="">Todos</option>
+          <option value="pendente">Pendentes</option>
+          <option value="confirmado">Confirmados</option>
+          <option value="concluido">Concluídos</option>
+          <option value="cancelado">Cancelados</option>
+          <option value="nao_compareceu">Não compareceu</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="agenda-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">— Compromissos</p>
+          <h2 id="periodTitle">Agenda de hoje</h2>
+        </div>
+        <span id="resultCount" class="result-count">0 registros</span>
+      </div>
+
+      <div id="loadingState" class="state-message">Carregando agendamentos...</div>
+
+      <div id="emptyState" class="state-message hidden">
+        <strong>Nenhum agendamento encontrado.</strong>
+        <span>O período selecionado está livre.</span>
+      </div>
+
+      <div id="dailyView" class="daily-view hidden"></div>
+      <div id="weeklyView" class="weekly-view hidden"></div>
+    </section>
+  </main>
+
+  <template id="appointmentTemplate">
+    <article class="appointment-card">
+      <div class="appointment-time">
+        <strong data-field="horario"></strong>
+        <span data-field="dataCurta"></span>
+      </div>
+
+      <div class="appointment-main">
+        <div class="appointment-title-row">
+          <div>
+            <h3 data-field="nome"></h3>
+            <p data-field="servico"></p>
+          </div>
+          <span class="status-badge" data-field="statusLabel"></span>
+        </div>
+
+        <div class="appointment-details">
+          <a data-field="telefoneLink">
+            <span>WhatsApp</span>
+            <strong data-field="telefone"></strong>
+          </a>
+          <p data-field="observacoes"></p>
+        </div>
+
+        <div class="appointment-actions">
+          <button data-status="confirmado" type="button">Confirmar</button>
+          <button data-status="concluido" type="button">Concluir</button>
+          <button data-status="cancelado" type="button">Cancelar</button>
+          <a data-field="whatsappButton" class="whatsapp-button" target="_blank" rel="noopener noreferrer">
+            WhatsApp
+          </a>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/js/admin.js" defer></script>
+</body>
+</html>

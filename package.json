@@ -1,7 +1,6 @@
 {
-  "name": "barbearia-template",
+  "name": "barbearia",
   "version": "1.0.0",
-  "description": "Template de site para barbearia",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,6 +16,6 @@
     "passport-local": "^1.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.1.14"
   }
 }

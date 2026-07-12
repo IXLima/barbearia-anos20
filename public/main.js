@@ -284,16 +284,6 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-
-// ============================================================
-// 6. DATA MÍNIMA NO INPUT DE DATA
-// ============================================================
-// Impede que o usuário selecione datas no passado.
-// new Date() retorna a data/hora atual.
-// toISOString() converte para o formato "2024-01-15T..."
-// .split('T')[0] pega só a parte da data "2024-01-15"
-// ============================================================
-
 const dateInput = document.getElementById('date');
 
 if (dateInput) {
@@ -302,11 +292,3 @@ if (dateInput) {
 }
 
 
-// ============================================================
-// LOG DE INICIALIZAÇÃO
-// ============================================================
-// Apenas uma mensagem de confirmação no console do navegador.
-// Pressione F12 e vá em "Console" para ver.
-// ============================================================
-
-console.log('%c✂ Barbearia Template carregado!', 'color: #f5f5f0; background: #111; padding: 8px 16px; font-size: 14px;');
