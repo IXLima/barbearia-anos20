@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — Corte & Arte</title>
+  <title>Login — Barbearia Nogueira</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -158,7 +158,7 @@
   <div class="auth-visual">
     <div class="auth-visual-overlay">
       <div class="auth-logo">
-        <span>✦</span> CORTE &amp; ARTE
+        <span>✦</span> BARBEARIA NOGUEIRA
       </div>
       <div>
         <p class="auth-visual-quote">
@@ -174,7 +174,7 @@
 
       <!-- Logo (só aparece no mobile, quando a imagem some) -->
       <div class="auth-logo" style="margin-bottom:32px;display:none;" id="logoMobile">
-        <span>✦</span> CORTE &amp; ARTE
+        <span>✦</span> BARBEARIA NOGUEIRA
       </div>
 
       <h1 class="auth-title">Bem-vindo<br>de volta.</h1>
@@ -242,6 +242,10 @@
         Não tem conta? <a href="/registro">Criar conta</a>
       </p>
 
+      <p class="auth-rodape" style="margin-top:12px;">
+        É o responsável pela barbearia? <a href="/admin-login">Acesso administrativo</a>
+      </p>
+
       <a href="/" class="voltar">← Voltar para o site</a>
 
     </div>
@@ -256,6 +260,8 @@
     const erros = {
       'credenciais': 'Email ou senha incorretos. Tente novamente.',
       'google':      'Erro ao autenticar com Google. Tente novamente.',
+      'google-nao-configurado': 'O acesso com Google ainda não foi configurado.',
+      'sem-permissao': 'Esta conta não possui permissão para acessar o painel.',
       'generico':    'Ocorreu um erro. Tente novamente.'
     };
     const avisos = {

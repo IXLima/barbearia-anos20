@@ -300,13 +300,3 @@ if (dateInput) {
   const today = new Date().toISOString().split('T')[0];
   dateInput.setAttribute('min', today); // Define a data mínima
 }
-
-
-// ============================================================
-// LOG DE INICIALIZAÇÃO
-// ============================================================
-// Apenas uma mensagem de confirmação no console do navegador.
-// Pressione F12 e vá em "Console" para ver.
-// ============================================================
-
-console.log('%c✂ Barbearia Template carregado!', 'color: #f5f5f0; background: #111; padding: 8px 16px; font-size: 14px;');

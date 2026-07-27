@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "criar-admin": "node scripts/create-admin.js",
+    "check": "node --check server.js && node --check scripts/create-admin.js",
+    "build": "npm run check",
+    "test": "node scripts/smoke-test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

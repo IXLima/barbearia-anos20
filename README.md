@@ -10,9 +10,17 @@ Template de site para barbearia com design preto e branco.
 barbearia-template/
 ├── package.json          ← Configuração do projeto Node.js
 ├── server.js             ← Servidor Express (backend)
+├── .env.example          ← Modelo das configurações privadas
+├── appointments.json     ← Agendamentos salvos (criado automaticamente)
+├── users.json            ← Contas salvas (criado automaticamente)
+├── scripts/
+│   └── create-admin.js   ← Cadastro seguro do administrador
 ├── README.md             ← Este arquivo
 └── public/               ← Tudo aqui é servido para o navegador
     ├── index.html        ← Estrutura da página
+    ├── agenda.html       ← Formulário do cliente
+    ├── admin-login.html  ← Login restrito do administrador
+    ├── admin.html        ← Agenda semanal e financeiro
     ├── css/
     │   └── style.css     ← Todo o visual do site
     └── js/
@@ -49,8 +57,30 @@ Ou, para desenvolvimento (reinicia automaticamente ao salvar):
 npm run dev
 ```
 
-### 4. Acessar o site
+### 4. Criar a conta de administrador
+
+Execute o assistente abaixo uma única vez e informe o nome, email e senha:
+
+```bash
+npm run criar-admin
+```
+
+Não há cadastro público de administrador. Isso evita que um cliente crie uma
+conta com acesso ao painel. Em hospedagens, a conta também pode ser configurada
+pelas variáveis `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` descritas no
+arquivo `.env.example`.
+
+### 5. Acessar o site
+
 Abra o navegador em: **http://localhost:3000**
+
+- Agenda do cliente: **http://localhost:3000/agenda**
+- Login administrativo: **http://localhost:3000/admin-login**
+- Painel administrativo: **http://localhost:3000/admin**
+
+Os agendamentos enviados pelos clientes são gravados em `appointments.json`.
+No painel, o administrador pode aceitar, recusar, concluir um atendimento,
+abrir uma conversa no WhatsApp e acompanhar receita realizada e prevista.
 
 ---
 
