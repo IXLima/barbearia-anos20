@@ -20,6 +20,7 @@ node_modules/
 # Arquivos que armazenam informações de clientes, tokens ou agendamentos.
 # Evita o vazamento de informações sensíveis (PII) no repositório público.
 users.json
+appointments.json
 
 # =========================================================================
 # IGNORAR LOGS DE ERRO

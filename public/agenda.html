@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agendamento — Corte & Arte</title>
+  <title>Agendamento — Barbearia Nogueira</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -164,6 +164,11 @@
       text-align: center; line-height: 1.8;
     }
     .msg-sucesso strong { display: block; font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 300; margin-bottom: 8px; }
+    .msg-erro {
+      display: none; padding: 13px 15px;
+      border: 1px solid #713932; background: rgba(148,63,52,0.08);
+      color: #d88e83; font-size: 0.72rem; line-height: 1.65;
+    }
 
     @media (max-width: 900px) {
       .grid-agenda { grid-template-columns: 1fr; gap: 48px; }
@@ -179,7 +184,7 @@
   <!-- ====== NAVBAR ====== -->
   <nav class="navbar">
     <div class="nav-inner">
-      <a href="/" class="nav-logo"><span>✦</span> CORTE &amp; ARTE</a>
+      <a href="/" class="nav-logo"><span>✦</span> BARBEARIA NOGUEIRA</a>
       <div class="nav-usuario">
         <!--
           Estes elementos serão preenchidos pelo JavaScript
@@ -223,7 +228,7 @@
         <div class="info-item">
           <span class="info-icone">◉</span>
           <div>
-            <strong>QUALQUER DUVIDA ENTRE EM CONTOATO PELO WhatsApp</strong>
+            <strong>Dúvidas? Entre em contato pelo WhatsApp</strong>
             <p>(19) 9295-8673</p>
           </div>
         </div>
@@ -240,6 +245,9 @@
           <div class="servico-linha"><span>Corte Clássico</span><span>R$ 45</span></div>
           <div class="servico-linha"><span>Barba Completa</span><span>R$ 35</span></div>
           <div class="servico-linha"><span>Corte + Barba</span><span>R$ 70</span></div>
+          <div class="servico-linha"><span>Relaxamento</span><span>R$ 55</span></div>
+          <div class="servico-linha"><span>Pigmentação</span><span>R$ 120</span></div>
+          <div class="servico-linha"><span>Pacote VIP</span><span>R$ 150</span></div>
         </div>
       </div>
 
@@ -280,7 +288,10 @@
               <option value="corte">Corte Clássico — R$ 45</option>
               <option value="barba">Barba Completa — R$ 35</option>
               <option value="combo">Corte + Barba — R$ 70</option>
-              </select>
+              <option value="relaxamento">Relaxamento — R$ 55</option>
+              <option value="pigmentacao">Pigmentação — R$ 120</option>
+              <option value="vip">Pacote VIP — R$ 150</option>
+            </select>
           </div>
 
           <div class="campo">
@@ -289,18 +300,33 @@
           </div>
 
           <div class="campo">
+            <label for="horario">Horário preferido</label>
+            <input
+              type="time"
+              id="horario"
+              name="horario"
+              min="09:00"
+              max="20:00"
+              step="1800"
+              required
+            >
+          </div>
+
+          <div class="campo">
             <label for="obs">Observações (opcional)</label>
             <textarea id="obs" name="obs" placeholder="Alguma preferência de horário ou informação adicional?" rows="3"></textarea>
           </div>
+
+          <div class="msg-erro" id="msgErro" role="alert"></div>
 
           <button type="submit" class="btn-primario" id="btnEnviar">
             Enviar Agendamento
           </button>
 
           <!-- Mensagem de sucesso -->
-          <div class="msg-sucesso" id="msgSucesso">
+          <div class="msg-sucesso" id="msgSucesso" role="status" aria-live="polite">
             <strong>✦ Agendamento recebido!</strong>
-            Entraremos em contato pelo WhatsApp em breve para confirmar o horário.
+            O pedido apareceu no painel da barbearia. Entraremos em contato pelo WhatsApp para confirmar.
           </div>
 
         </form>
@@ -310,87 +336,92 @@
   </div>
 
   <script>
-    // ============================================================
-    // Carrega os dados do usuário logado e preenche a interface
-    // ============================================================
-    //
-    // fetch('/api/usuario') chama a rota que criamos no server.js.
-    // Ela retorna um JSON com os dados do usuário logado.
-    // Como é uma chamada assíncrona, usamos .then() para esperar.
-    // ============================================================
+    const form = document.getElementById('formAgenda');
+    const btnEnviar = document.getElementById('btnEnviar');
+    const msgSucesso = document.getElementById('msgSucesso');
+    const msgErro = document.getElementById('msgErro');
+    const dataInput = document.getElementById('data');
+    let nomeDaConta = '';
+
+    function hojeLocal() {
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const dia = String(agora.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    dataInput.min = hojeLocal();
 
     fetch('/api/usuario')
-      .then(res => res.json())
-      .then(data => {
-        if (!data.logado) {
-          // Se por algum motivo não está logado, redireciona
-          window.location.href = '/login';
-          return;
-        }
+      .then((resposta) => {
+        if (!resposta.ok) throw new Error('Sessão encerrada.');
+        return resposta.json();
+      })
+      .then((data) => {
+        const usuario = data.usuario;
+        nomeDaConta = usuario.nome || '';
+        document.getElementById('nome').value = nomeDaConta;
+        document.getElementById('usuarioNome').textContent =
+          usuario.nome || usuario.email;
+        document.getElementById('saudacaoNome').textContent =
+          `Olá, ${usuario.nome?.split(' ')[0] || 'cliente'}!`;
 
-        const u = data.usuario;
-
-        // Preenche o nome no campo do formulário
-        document.getElementById('nome').value = u.nome || '';
-
-        // Preenche o nome na navbar e na saudação
-        document.getElementById('usuarioNome').textContent = u.nome || u.email;
-        document.getElementById('saudacaoNome').textContent = `Olá, ${u.nome?.split(' ')[0] || 'cliente'}!`;
-
-        // Mostra a inicial do nome quando não tem foto
-        const inicial = (u.nome || u.email || '?')[0].toUpperCase();
-
-        if (u.foto) {
-          // Usuário tem foto (veio do Google)
-          // Navbar
-          document.getElementById('usuarioFotoWrap').innerHTML =
-            `<img src="${u.foto}" alt="${u.nome}" style="width:100%;height:100%;object-fit:cover;">`;
-          // Saudação
-          document.getElementById('saudacaoFotoWrap').innerHTML =
-            `<img src="${u.foto}" alt="${u.nome}" style="width:100%;height:100%;object-fit:cover;">`;
+        const inicial = (usuario.nome || usuario.email || '?')[0].toUpperCase();
+        if (usuario.foto) {
+          const foto = document.createElement('img');
+          foto.src = usuario.foto;
+          foto.alt = usuario.nome || 'Foto do cliente';
+          foto.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+          document.getElementById('usuarioFotoWrap').replaceChildren(foto.cloneNode());
+          document.getElementById('saudacaoFotoWrap').replaceChildren(foto);
         } else {
-          // Sem foto: mostra inicial
           document.getElementById('usuarioInicial').textContent = inicial;
           document.getElementById('saudacaoInicial').textContent = inicial;
         }
       })
-      .catch(() => window.location.href = '/login');
+      .catch(() => {
+        window.location.href = '/login?aviso=entre-para-agendar';
+      });
 
-    // ====== Data mínima (sem datas no passado) ======
-    const dataInput = document.getElementById('data');
-    dataInput.min = new Date().toISOString().split('T')[0];
-
-    // ====== Formulário ======
-    const form     = document.getElementById('formAgenda');
-    const btnEnviar = document.getElementById('btnEnviar');
-    const msgSucesso = document.getElementById('msgSucesso');
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      // Coleta os dados do formulário
-      const dados = {
-        nome:     document.getElementById('nome').value,
-        telefone: document.getElementById('telefone').value,
-        servico:  document.getElementById('servico').value,
-        data:     document.getElementById('data').value,
-        obs:      document.getElementById('obs').value,
-      };
-
-      console.log('Agendamento:', dados);
-
-      // Simula envio (troque por fetch('/api/agendar', ...) no futuro)
+    form.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      msgErro.style.display = 'none';
+      msgSucesso.style.display = 'none';
       btnEnviar.textContent = 'Enviando...';
       btnEnviar.disabled = true;
 
-      setTimeout(() => {
-        form.style.opacity = '0';
-        form.style.transition = '0.3s ease';
-        setTimeout(() => {
-          form.style.display = 'none';
-          msgSucesso.style.display = 'block';
-        }, 300);
-      }, 1500);
+      const dados = Object.fromEntries(new FormData(form).entries());
+
+      try {
+        const resposta = await fetch('/api/agendamentos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+        const resultado = await resposta.json();
+
+        if (resposta.status === 401) {
+          window.location.href = '/login?aviso=entre-para-agendar';
+          return;
+        }
+        if (!resposta.ok) {
+          throw new Error(resultado.mensagem || 'Não foi possível agendar.');
+        }
+
+        form.reset();
+        document.getElementById('nome').value = nomeDaConta;
+        dataInput.min = hojeLocal();
+        msgSucesso.style.display = 'block';
+        msgSucesso.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (erro) {
+        msgErro.textContent =
+          erro.message || 'Não foi possível enviar. Tente novamente.';
+        msgErro.style.display = 'block';
+      } finally {
+        btnEnviar.textContent = 'Enviar Agendamento';
+        btnEnviar.disabled = false;
+      }
     });
   </script>
 
