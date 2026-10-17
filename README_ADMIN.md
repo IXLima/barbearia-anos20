@@ -1,125 +1,67 @@
 # Painel administrativo — Barbearia Nogueira
 
-Este pacote adiciona uma primeira versão funcional do painel do barbeiro.
+Acesso em `/admin-login`. O painel fica em `/admin`.
 
-## Arquivos
+## Conta do administrador
 
-Copie para a raiz do projeto:
+Uma destas opções, no `.env`:
 
-```text
-server.js
-.env.example
-scripts/seed-agendamentos.js
-public/admin.html
-public/css/admin.css
-public/js/admin.js
-```
+- `ADMIN_EMAIL` + `ADMIN_PASSWORD` (mínimo 8 caracteres): a conta é criada ou atualizada ao iniciar o servidor.
+- Só `ADMIN_EMAIL`: apenas uma conta **Google** com esse e-mail vira administradora.
+- `npm run criar-admin`: assistente que pede nome, e-mail e senha.
 
-Adicione ao `.gitignore`:
+O papel fica no campo `papel` (`admin` ou `cliente`) de `users.json`. Contas antigas com `role` são convertidas automaticamente na leitura.
 
-```gitignore
-agendamentos.json
-```
+## Horários
 
-## Configuração do administrador
+- **Cliente:** só escolhe entre horários livres de 30 em 30 minutos. A lista vem de `GET /api/agendamentos/horarios?data=AAAA-MM-DD` e o servidor valida de novo ao reservar.
+- **Expediente:** Seg–Sex 09:00–20:00, Sábado 09:00–18:00, domingo fechado (`services/agendaService.js`).
+- **Admin:** pode usar qualquer horário (ex.: 14:45), mas nunca sobrepor outro atendimento. O conflito compara intervalos (`novoInicio < fimExistente` e `novoFim > inicioExistente`) e informa com quem conflita.
+- Cancelados e itens na lixeira não ocupam horário.
+- Bloqueios opcionais em `bloqueios.json`: `[{ "data": "2026-12-24", "inicio": "12:00", "fim": "14:00", "motivo": "almoço" }]`. Valem só para o cliente.
+- A reserva é atômica dentro de um processo Node. Com mais de um processo, migre para um banco com restrição de unicidade.
 
-No `.env`, acrescente:
+## Status
 
-```env
-ADMIN_EMAIL=o-email-da-sua-conta@exemplo.com
-```
+`pendente`, `confirmado`, `concluido`, `cancelado`, `nao_compareceu` e `remarcacao_solicitada` (reservado para o futuro webhook do WhatsApp).
 
-Entre pelo login normal usando exatamente esse e-mail. O servidor concederá acesso ao painel `/admin`.
+Ao remarcar, o status volta para `pendente`, a menos que o admin marque que o cliente já concordou (e o agendamento já estivesse `confirmado`). Cada remarcação grava um evento em `historico`.
 
-Também é possível colocar `"role": "admin"` diretamente no seu registro em `users.json`, mas usar `ADMIN_EMAIL` evita editar o arquivo manualmente em cada criação de conta.
+Dados antigos `aceito` e `recusado` são lidos como `confirmado` e `cancelado`.
 
-## Comandos
+## Ações do painel
 
-Instale as dependências já existentes:
+Confirmar, concluir, remarcar (data e horário), cancelar, reativar, excluir (lixeira de 30 dias, com restauração e realocação), agendamento manual, "Enviar confirmação" e "Avisar cliente sobre alteração" (WhatsApp), fechamento do dia, ganhos do mês, potencial da semana e resumo do mês por serviço.
+
+Fechamento do dia: o valor realizado soma só `concluido`. O dia só é considerado encerrado quando não restar nenhum `pendente`, `confirmado` ou `remarcacao_solicitada`.
+
+## API administrativa (exige papel `admin`)
+
+| Método e rota | Função |
+|---|---|
+| `GET /api/admin/agendamentos?data=&inicio=&fim=&status=` | Lista agendamentos |
+| `POST /api/admin/agendamentos` | Agendamento manual |
+| `PATCH /api/admin/agendamentos/:id/remarcar` | Nova data e horário (`manterConfirmado` opcional) |
+| `PATCH /api/admin/agendamentos/:id/status` | Muda o status |
+| `DELETE /api/admin/agendamentos/:id` | Move para a lixeira |
+| `GET /api/admin/lixeira` | Itens da lixeira |
+| `POST /api/admin/lixeira/:id/restaurar` | Restaura (data e horário opcionais) |
+| `DELETE /api/admin/lixeira/:id` | Apaga definitivamente |
+| `GET /api/admin/resumo?referencia=` | Métricas, ganhos e resumo por serviço |
+| `GET /api/admin/fechamento?data=` | Fechamento do dia |
+
+## WhatsApp
+
+Hoje as mensagens viram links `wa.me` montados em `services/whatsappService.js`, sem acoplar texto ao HTML. Para usar a API oficial (WhatsApp Cloud API), acrescente `enviarMensagemWhatsApp(numero, template, parametros)` nesse arquivo. Não use automação via WhatsApp Web nem bibliotecas não oficiais.
+
+## Dados e segurança
+
+`users.json`, `agendamentos.json` e `bloqueios.json` ficam fora do git. A pasta pode ser trocada com `DATA_DIR`. Um arquivo JSON corrompido faz o servidor responder erro em vez de apagar os dados.
+
+## Testes
 
 ```bash
-npm install
+npm test
 ```
 
-Crie agendamentos de teste:
-
-```bash
-node scripts/seed-agendamentos.js
-```
-
-Inicie o projeto:
-
-```bash
-npm run dev
-```
-
-Acesse:
-
-```text
-http://localhost:3000/admin
-```
-
-## Integração do formulário do cliente
-
-A API pronta recebe:
-
-```http
-POST /api/agendamentos
-Content-Type: application/json
-```
-
-Corpo:
-
-```json
-{
-  "nome": "João da Silva",
-  "telefone": "(19) 99999-9999",
-  "servico": "corte",
-  "data": "2026-07-15",
-  "horario": "09:30",
-  "observacoes": "Corte baixo nas laterais."
-}
-```
-
-No `agenda.html`, adicione um campo de horário:
-
-```html
-<div class="campo">
-  <label for="horario">Horário</label>
-  <input type="time" id="horario" name="horario" required>
-</div>
-```
-
-Substitua a simulação com `setTimeout` por:
-
-```js
-const response = await fetch('/api/agendamentos', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    nome: document.getElementById('nome').value,
-    telefone: document.getElementById('telefone').value,
-    servico: document.getElementById('servico').value,
-    data: document.getElementById('data').value,
-    horario: document.getElementById('horario').value,
-    observacoes: document.getElementById('obs').value
-  })
-});
-
-const result = await response.json();
-
-if (!response.ok) {
-  throw new Error(result.erro || 'Não foi possível criar o agendamento.');
-}
-```
-
-## Por que JSON primeiro?
-
-O painel e as APIs ficam prontos para validar o fluxo. `agendamentos.json` é provisório e adequado apenas ao desenvolvimento local.
-
-Quando o fluxo estiver aprovado, migre para:
-
-- SQLite, para uma aplicação pequena em um único servidor; ou
-- PostgreSQL/Supabase, para hospedagem e acesso de múltiplos dispositivos.
-
-A tela administrativa não precisará ser refeita. Somente as funções `lerAgendamentos` e `salvarAgendamentos` serão substituídas por consultas ao banco.
+Roda os testes unitários de `test/` e o `scripts/smoke-test.js` (login, papéis, grade, conflitos, status e migração de dados), usando uma pasta temporária.

@@ -79,6 +79,32 @@
       </article>
     </section>
 
+    <section class="service-summary" aria-label="Resumo do mês por serviço">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">— Resumo do mês</p>
+          <h2 id="serviceSummaryTitle">Por serviço</h2>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="serviceSummaryTable" class="summary-table">
+          <thead>
+            <tr>
+              <th scope="col">Serviço</th>
+              <th scope="col">Concluídos</th>
+              <th scope="col">Confirmados</th>
+              <th scope="col">Realizado</th>
+              <th scope="col">Previsto</th>
+            </tr>
+          </thead>
+          <tbody id="serviceSummaryBody"></tbody>
+        </table>
+      </div>
+
+      <p id="serviceSummaryEmpty" class="summary-empty hidden">Sem atendimentos neste mês.</p>
+    </section>
+
     <section class="toolbar">
       <div class="view-switch" role="tablist" aria-label="Tipo de visualização">
         <button class="view-button active" type="button" role="tab" aria-selected="true" data-mode="daily">Dia</button>

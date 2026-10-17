@@ -29,6 +29,28 @@ function dataLocalIso(date) {
   return `${date.getFullYear()}-${mes}-${dia}`;
 }
 
+const FUSO_DA_BARBEARIA = 'America/Sao_Paulo';
+
+// Data e hora de agora no fuso da barbearia, não no fuso do servidor.
+function agoraEmSaoPaulo(momento = new Date()) {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: FUSO_DA_BARBEARIA,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(momento).map((parte) => [parte.type, parte.value])
+  );
+
+  return {
+    data: `${partes.year}-${partes.month}-${partes.day}`,
+    minutos: Number(partes.hour) * 60 + Number(partes.minute)
+  };
+}
+
 function funcionamentoDoDia(data) {
   const [ano, mes, dia] = data.split('-').map(Number);
   return FUNCIONAMENTO[new Date(ano, mes - 1, dia).getDay()];
@@ -83,16 +105,13 @@ function gerarGrade(data, duracao = DURACAO_PADRAO) {
   return grade;
 }
 
-function horariosDisponiveis({ data, agendamentos, bloqueios = [], duracao = DURACAO_PADRAO, agora = new Date() }) {
-  const hoje = dataLocalIso(agora);
-  if (data < hoje) return [];
-
-  const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+function horariosDisponiveis({ data, agendamentos, bloqueios = [], duracao = DURACAO_PADRAO, agora = agoraEmSaoPaulo() }) {
+  if (data < agora.data) return [];
 
   return gerarGrade(data, duracao).filter((horario) => {
     const candidato = intervalo(horario, duracao);
 
-    if (data === hoje && candidato.inicio <= minutosAgora) return false;
+    if (data === agora.data && candidato.inicio <= agora.minutos) return false;
     if (encontrarConflito(agendamentos, { data, horario, duracao })) return false;
 
     return !bloqueios.some((bloqueio) =>
@@ -111,6 +130,7 @@ module.exports = {
   paraMinutos,
   paraHorario,
   dataLocalIso,
+  agoraEmSaoPaulo,
   funcionamentoDoDia,
   haSobreposicao,
   encontrarConflito,

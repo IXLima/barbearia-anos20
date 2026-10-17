@@ -11,20 +11,29 @@ barbearia-template/
 ├── package.json          ← Configuração do projeto Node.js
 ├── server.js             ← Servidor Express (backend)
 ├── .env.example          ← Modelo das configurações privadas
-├── appointments.json     ← Agendamentos salvos (criado automaticamente)
-├── users.json            ← Contas salvas (criado automaticamente)
+├── agendamentos.json     ← Agendamentos salvos (criado automaticamente, fora do git)
+├── users.json            ← Contas salvas (criado automaticamente, fora do git)
+├── bloqueios.json        ← Opcional: faixas sem atendimento para o cliente (fora do git)
+├── services/
+│   ├── agendaService.js  ← Grade de 30 min, expediente e conflito entre horários
+│   └── whatsappService.js← Mensagens e links do WhatsApp
 ├── scripts/
-│   └── create-admin.js   ← Cadastro seguro do administrador
+│   ├── create-admin.js   ← Cadastro seguro do administrador
+│   └── smoke-test.js     ← Teste de ponta a ponta (roda no npm test)
+├── test/                 ← Testes unitários dos serviços
 ├── README.md             ← Este arquivo
+├── README_ADMIN.md       ← Painel administrativo, regras e API
 └── public/               ← Tudo aqui é servido para o navegador
     ├── index.html        ← Estrutura da página
-    ├── agenda.html       ← Formulário do cliente
+    ├── agenda.html       ← Cliente escolhe data e horário disponível
     ├── admin-login.html  ← Login restrito do administrador
-    ├── admin.html        ← Agenda semanal e financeiro
+    ├── admin.html        ← Painel administrativo
     ├── css/
-    │   └── style.css     ← Todo o visual do site
+    │   ├── style.css     ← Todo o visual do site
+    │   └── admin.css     ← Visual do painel
     └── js/
-        └── main.js       ← Interatividade e comportamentos
+        ├── main.js       ← Interatividade e comportamentos
+        └── admin.js      ← Lógica do painel
 ```
 
 ---
@@ -46,7 +55,7 @@ Na pasta do projeto, execute:
 ```bash
 npm install
 ```
-Isso lê o `package.json` e instala o Express (e o Nodemon).
+Isso lê o `package.json` e instala as dependências do projeto.
 
 ### 3. Iniciar o servidor
 ```bash
@@ -68,7 +77,8 @@ npm run criar-admin
 Não há cadastro público de administrador. Isso evita que um cliente crie uma
 conta com acesso ao painel. Em hospedagens, a conta também pode ser configurada
 pelas variáveis `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` descritas no
-arquivo `.env.example`.
+arquivo `.env.example`. Só o `ADMIN_EMAIL`, sem senha, promove apenas uma conta
+Google com esse e-mail. Contas locais precisam de `ADMIN_PASSWORD` ou do assistente.
 
 ### 5. Acessar o site
 
@@ -78,9 +88,17 @@ Abra o navegador em: **http://localhost:3000**
 - Login administrativo: **http://localhost:3000/admin-login**
 - Painel administrativo: **http://localhost:3000/admin**
 
-Os agendamentos enviados pelos clientes são gravados em `appointments.json`.
-No painel, o administrador pode aceitar, recusar, concluir um atendimento,
-abrir uma conversa no WhatsApp e acompanhar receita realizada e prevista.
+Os agendamentos enviados pelos clientes são gravados em `agendamentos.json`.
+O cliente só vê horários livres de 30 em 30 minutos. No painel, o administrador
+confirma, conclui, remarca (com horários quebrados, se precisar), cancela, agenda
+manualmente, usa a lixeira de 30 dias, abre o WhatsApp com a mensagem pronta e
+acompanha ganhos do mês, potencial da semana e o fechamento do dia. Detalhes em
+`README_ADMIN.md`.
+
+### 6. Rodar os testes
+```bash
+npm test
+```
 
 ---
 
@@ -113,4 +131,6 @@ Cada `<div class="service-card">` é um serviço — edite livremente.
 | Pacote    | Para que serve                              |
 |-----------|---------------------------------------------|
 | express   | Framework para criar o servidor web         |
+| passport  | Login local e com Google                    |
+| bcryptjs  | Criptografia das senhas                     |
 | nodemon   | Reinicia o servidor automaticamente (dev)   |

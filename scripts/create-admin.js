@@ -1,10 +1,15 @@
+require('dotenv').config();
+
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline/promises');
 const bcrypt = require('bcryptjs');
 
-const arquivoUsuarios = path.join(__dirname, '..', 'users.json');
+const pastaDados = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, '..');
+const arquivoUsuarios = path.join(pastaDados, 'users.json');
 
 function lerUsuarios() {
   if (!fs.existsSync(arquivoUsuarios)) return [];

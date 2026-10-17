@@ -6,6 +6,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -14,6 +15,7 @@ const {
   paraHorario,
   paraMinutos,
   dataLocalIso,
+  agoraEmSaoPaulo,
   funcionamentoDoDia,
   encontrarConflito,
   descreverConflito,
@@ -26,11 +28,14 @@ const {
 } = require('./services/whatsappService');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
-const USERS_FILE = path.join(__dirname, 'users.json');
-const APPOINTMENTS_FILE = path.join(__dirname, 'agendamentos.json');
-const BLOCKS_FILE = path.join(__dirname, 'bloqueios.json');
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : __dirname;
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const APPOINTMENTS_FILE = path.join(DATA_DIR, 'agendamentos.json');
+const BLOCKS_FILE = path.join(DATA_DIR, 'bloqueios.json');
 
 const SERVICOS = {
   corte: { nome: 'Corte Clássico', preco: 45, duracao: 30 },
@@ -55,25 +60,51 @@ const STATUS_EM_ABERTO = ['pendente', 'confirmado', 'remarcacao_solicitada'];
 const DIAS_NA_LIXEIRA = 30;
 const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
-function readJsonFile(filePath, fallback = []) {
-  if (!fs.existsSync(filePath)) return fallback;
+// Arquivo inexistente vale lista vazia. Arquivo corrompido lança erro: devolver [] aqui faria a
+// próxima gravação apagar todos os dados.
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) return [];
 
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  } catch (error) {
-    console.error(`Erro ao ler ${path.basename(filePath)}:`, error.message);
-    return fallback;
+  const conteudo = fs.readFileSync(filePath, 'utf-8').trim();
+  if (!conteudo) return [];
+
+  const dados = JSON.parse(conteudo);
+
+  if (!Array.isArray(dados)) {
+    throw new Error(`${path.basename(filePath)} precisa conter uma lista.`);
   }
+
+  return dados;
 }
 
 function writeJsonFile(filePath, data) {
-  const temporaryFile = `${filePath}.tmp`;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const temporaryFile = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(temporaryFile, JSON.stringify(data, null, 2), 'utf-8');
   fs.renameSync(temporaryFile, filePath);
 }
 
+const STATUS_ANTIGOS = { aceito: 'confirmado', recusado: 'cancelado' };
+
+// Dados antigos continuam válidos: role vira papel, aceito/recusado viram confirmado/cancelado.
+function normalizarUsuario(usuario) {
+  if (usuario.papel) return usuario;
+
+  const { role, ...resto } = usuario;
+  return { ...resto, papel: role === 'admin' ? 'admin' : 'cliente' };
+}
+
+function normalizarAgendamento(agendamento) {
+  const status = STATUS_ANTIGOS[agendamento.status];
+  return status ? { ...agendamento, status } : agendamento;
+}
+
+function papelDo(usuario) {
+  return usuario?.papel === 'admin' ? 'admin' : 'cliente';
+}
+
 function lerUsuarios() {
-  return readJsonFile(USERS_FILE);
+  return readJsonFile(USERS_FILE).map(normalizarUsuario);
 }
 
 function salvarUsuarios(usuarios) {
@@ -81,7 +112,7 @@ function salvarUsuarios(usuarios) {
 }
 
 function lerAgendamentos() {
-  return readJsonFile(APPOINTMENTS_FILE);
+  return readJsonFile(APPOINTMENTS_FILE).map(normalizarAgendamento);
 }
 
 function salvarAgendamentos(agendamentos) {
@@ -118,9 +149,88 @@ function encontrarPorId(id) {
   return lerUsuarios().find((usuario) => usuario.id === id);
 }
 
+function normalizarEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
 function encontrarPorEmail(email) {
-  const emailNormalizado = String(email || '').toLowerCase().trim();
-  return lerUsuarios().find((usuario) => usuario.email === emailNormalizado);
+  const emailNormalizado = normalizarEmail(email);
+  return lerUsuarios().find(
+    (usuario) => normalizarEmail(usuario.email) === emailNormalizado
+  );
+}
+
+function hojeEmSaoPaulo() {
+  return agoraEmSaoPaulo().data;
+}
+
+function usuarioSeguro(usuario) {
+  const { senhaHash, ...seguro } = usuario;
+  return seguro;
+}
+
+// ADMIN_EMAIL + ADMIN_PASSWORD criam (ou atualizam) a conta administrativa a cada inicialização.
+// Só ADMIN_EMAIL promove apenas uma conta Google com esse e-mail: uma conta local pode ser
+// cadastrada por qualquer pessoa, então o e-mail dela não prova quem é o dono.
+function configurarAdministrador() {
+  const email = normalizarEmail(process.env.ADMIN_EMAIL);
+  const senha = String(process.env.ADMIN_PASSWORD || '');
+  const nome = String(process.env.ADMIN_NAME || 'Administrador').trim();
+
+  if (!email) return false;
+
+  if (senha && senha.length < 8) {
+    console.warn('ADMIN_PASSWORD precisa ter pelo menos 8 caracteres. Conta administrativa não configurada.');
+    return false;
+  }
+
+  if (!senha) {
+    console.warn('ADMIN_EMAIL sem ADMIN_PASSWORD: só uma conta Google com esse e-mail vira administradora. Defina ADMIN_PASSWORD ou rode "npm run criar-admin".');
+  }
+
+  const usuarios = lerUsuarios();
+  const existente = usuarios.find((usuario) => normalizarEmail(usuario.email) === email);
+  const agora = new Date().toISOString();
+
+  if (!senha) {
+    if (existente?.tipo !== 'google' || existente.papel === 'admin') return false;
+
+    existente.papel = 'admin';
+    existente.atualizadoEm = agora;
+    salvarUsuarios(usuarios);
+    return true;
+  }
+
+  if (existente) {
+    const mudou = existente.papel !== 'admin' ||
+      (existente.tipo !== 'google' && !bcrypt.compareSync(senha, existente.senhaHash || ''));
+
+    if (!mudou) return false;
+
+    existente.papel = 'admin';
+    existente.nome = existente.nome || nome;
+
+    if (existente.tipo !== 'google') {
+      existente.tipo = 'local';
+      existente.senhaHash = bcrypt.hashSync(senha, 12);
+    }
+
+    existente.atualizadoEm = agora;
+  } else {
+    usuarios.push({
+      id: `admin_${crypto.randomUUID()}`,
+      nome,
+      email,
+      senhaHash: bcrypt.hashSync(senha, 12),
+      foto: '',
+      tipo: 'local',
+      papel: 'admin',
+      criadoEm: agora
+    });
+  }
+
+  salvarUsuarios(usuarios);
+  return true;
 }
 
 function textoSeguro(value, maxLength = 300) {
@@ -243,13 +353,8 @@ function validarAgendamento(body, { permitirPassado = false } = {}) {
     return { erro: 'Data ou horário inválido.' };
   }
 
-  if (!permitirPassado) {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-
-    if (new Date(`${dados.data}T00:00:00`) < hoje) {
-      return { erro: 'Escolha uma data futura ou de hoje.' };
-    }
+  if (!permitirPassado && dados.data < hojeEmSaoPaulo()) {
+    return { erro: 'Escolha uma data futura ou de hoje.' };
   }
 
   return { dados };
@@ -259,7 +364,7 @@ function criarAgendamento(dados, extras) {
   const agora = new Date().toISOString();
 
   return {
-    id: `ag_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    id: `ag_${crypto.randomUUID()}`,
     ...dados,
     ...extras,
     criadoEm: agora,
@@ -281,9 +386,19 @@ function removerLixeiraExpirada() {
   return restantes;
 }
 
+try {
+  configurarAdministrador();
+} catch (error) {
+  console.error('Não foi possível configurar a conta administrativa:', error.message);
+}
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('SESSION_SECRET ausente: usando um segredo de desenvolvimento. Defina SESSION_SECRET no .env.');
+}
+
+app.disable('x-powered-by');
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
-app.use(express.static('public'));
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'somente-desenvolvimento-troque-no-env',
@@ -303,8 +418,11 @@ app.use(passport.session());
 passport.serializeUser((usuario, done) => done(null, usuario.id));
 
 passport.deserializeUser((id, done) => {
-  const usuario = encontrarPorId(id);
-  done(null, usuario || false);
+  try {
+    done(null, encontrarPorId(id) || false);
+  } catch (error) {
+    done(error);
+  }
 });
 
 const googleConfigurado =
@@ -319,26 +437,36 @@ if (googleConfigurado) {
       process.env.GOOGLE_CALLBACK_URL ||
       'http://localhost:3000/auth/google/callback'
   }, (accessToken, refreshToken, profile, done) => {
-    const usuarios = lerUsuarios();
-    let usuario = usuarios.find((item) => item.googleId === profile.id);
+    try {
+      const usuarios = lerUsuarios();
+      let usuario = usuarios.find((item) => item.googleId === profile.id);
 
-    if (!usuario) {
-      usuario = {
-        id: `google_${profile.id}`,
-        googleId: profile.id,
-        nome: profile.displayName,
-        email: profile.emails?.[0]?.value?.toLowerCase() || '',
-        foto: profile.photos?.[0]?.value || '',
-        tipo: 'google',
-        role: 'cliente',
-        criadoEm: new Date().toISOString()
-      };
+      if (!usuario) {
+        const emailGoogle = normalizarEmail(profile.emails?.[0]?.value);
+        const emailVerificado = Boolean(profile.emails?.[0]?.verified);
+        const ehAdmin = emailVerificado &&
+          emailGoogle !== '' &&
+          emailGoogle === normalizarEmail(process.env.ADMIN_EMAIL);
 
-      usuarios.push(usuario);
-      salvarUsuarios(usuarios);
+        usuario = {
+          id: `google_${profile.id}`,
+          googleId: profile.id,
+          nome: profile.displayName,
+          email: emailGoogle,
+          foto: profile.photos?.[0]?.value || '',
+          tipo: 'google',
+          papel: ehAdmin ? 'admin' : 'cliente',
+          criadoEm: new Date().toISOString()
+        };
+
+        usuarios.push(usuario);
+        salvarUsuarios(usuarios);
+      }
+
+      return done(null, usuario);
+    } catch (error) {
+      return done(error);
     }
-
-    return done(null, usuario);
   }));
 } else {
   console.warn(
@@ -349,29 +477,52 @@ if (googleConfigurado) {
 passport.use(new LocalStrategy(
   { usernameField: 'email', passwordField: 'senha' },
   (email, senha, done) => {
-    const usuario = encontrarPorEmail(email);
+    try {
+      const usuario = encontrarPorEmail(email);
 
-    if (!usuario) {
-      return done(null, false, { message: 'E-mail não encontrado.' });
+      if (!usuario) {
+        return done(null, false, { message: 'E-mail não encontrado.' });
+      }
+
+      if (usuario.tipo === 'google') {
+        return done(null, false, { message: 'Use o botão Google.' });
+      }
+
+      if (!bcrypt.compareSync(senha, usuario.senhaHash || '')) {
+        return done(null, false, { message: 'Senha incorreta.' });
+      }
+
+      return done(null, usuario);
+    } catch (error) {
+      return done(error);
     }
-
-    if (usuario.tipo === 'google') {
-      return done(null, false, { message: 'Use o botão Google.' });
-    }
-
-    const senhaCorreta = bcrypt.compareSync(senha, usuario.senhaHash);
-
-    if (!senhaCorreta) {
-      return done(null, false, { message: 'Senha incorreta.' });
-    }
-
-    return done(null, usuario);
   }
 ));
 
-function exigeLogin(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  return res.redirect('/login?aviso=entre-para-agendar');
+function usuarioEhAdmin(usuario) {
+  return papelDo(usuario) === 'admin';
+}
+
+function exigeClientePagina(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.redirect('/login?aviso=entre-para-agendar');
+  }
+
+  if (usuarioEhAdmin(req.user)) return res.redirect('/admin');
+
+  return next();
+}
+
+function exigeAdminPagina(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.redirect('/admin-login?aviso=entre-como-admin');
+  }
+
+  if (!usuarioEhAdmin(req.user)) {
+    return res.redirect('/admin-login?erro=sem-permissao');
+  }
+
+  return next();
 }
 
 function exigeLoginApi(req, res, next) {
@@ -379,33 +530,53 @@ function exigeLoginApi(req, res, next) {
   return res.status(401).json({ erro: 'Entre na sua conta para continuar.' });
 }
 
+function exigeAdminApi(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ erro: 'Entre como administrador para continuar.' });
+  }
+
+  if (!usuarioEhAdmin(req.user)) {
+    return res.status(403).json({ erro: 'Esta ação é exclusiva da administração.' });
+  }
+
+  return next();
+}
+
 function enviarErro(res, resultado) {
   const { status = 400, ...corpo } = resultado;
   return res.status(status).json(corpo);
 }
 
-function usuarioEhAdmin(usuario) {
-  if (!usuario) return false;
-  if (usuario.role === 'admin') return true;
+function entrarUsuario(req, res, next, somenteAdmin = false) {
+  passport.authenticate('local', (erro, usuario) => {
+    if (erro) return next(erro);
 
-  const adminEmail = String(process.env.ADMIN_EMAIL || '')
-    .toLowerCase()
-    .trim();
+    if (!usuario) {
+      return res.redirect(`${somenteAdmin ? '/admin-login' : '/login'}?erro=credenciais`);
+    }
 
-  return Boolean(adminEmail) && usuario.email === adminEmail;
+    if (somenteAdmin && !usuarioEhAdmin(usuario)) {
+      return res.redirect('/admin-login?erro=sem-permissao');
+    }
+
+    return req.logIn(usuario, (erroLogin) => {
+      if (erroLogin) return next(erroLogin);
+      return res.redirect(usuarioEhAdmin(usuario) ? '/admin' : '/agenda');
+    });
+  })(req, res, next);
 }
 
-function exigeAdmin(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.redirect('/login?aviso=acesso-administrativo');
-  }
-
-  if (!usuarioEhAdmin(req.user)) {
-    return res.status(403).send('Acesso negado: usuário sem permissão administrativa.');
-  }
-
+// As páginas protegidas também não podem ser baixadas direto de /public.
+app.use((req, res, next) => {
+  if (req.path === '/admin.html') return exigeAdminPagina(req, res, next);
+  if (req.path === '/agenda.html') return exigeClientePagina(req, res, next);
   return next();
-}
+});
+
+app.use(express.static(path.join(__dirname, 'public'), {
+  extensions: false,
+  index: false
+}));
 
 app.get('/auth/google', (req, res, next) => {
   if (!googleConfigurado) {
@@ -424,16 +595,23 @@ app.get('/auth/google/callback', (req, res, next) => {
     return res.redirect('/login?erro=google-nao-configurado');
   }
 
-  return passport.authenticate('google', {
-    failureRedirect: '/login?erro=google',
-    successRedirect: '/agenda'
+  return passport.authenticate('google', (erro, usuario) => {
+    if (erro || !usuario) return res.redirect('/login?erro=google');
+
+    return req.logIn(usuario, (erroLogin) => {
+      if (erroLogin) return next(erroLogin);
+      return res.redirect(usuarioEhAdmin(usuario) ? '/admin' : '/agenda');
+    });
   })(req, res, next);
 });
 
-app.post('/auth/local', passport.authenticate('local', {
-  failureRedirect: '/login?erro=credenciais',
-  successRedirect: '/agenda'
-}));
+app.post('/auth/local', (req, res, next) => {
+  entrarUsuario(req, res, next, false);
+});
+
+app.post('/auth/admin', (req, res, next) => {
+  entrarUsuario(req, res, next, true);
+});
 
 app.post('/auth/registro', (req, res) => {
   const nome = textoSeguro(req.body.nome, 100);
@@ -458,13 +636,13 @@ app.post('/auth/registro', (req, res) => {
   }
 
   const novoUsuario = {
-    id: `local_${Date.now()}`,
+    id: `local_${crypto.randomUUID()}`,
     nome,
     email,
     senhaHash: bcrypt.hashSync(senha, 12),
     foto: '',
     tipo: 'local',
-    role: 'cliente',
+    papel: 'cliente',
     criadoEm: new Date().toISOString()
   };
 
@@ -508,25 +686,27 @@ app.get('/registro', (req, res) => {
   return res.sendFile(path.join(__dirname, 'public', 'registro.html'));
 });
 
-app.get('/agenda', exigeLogin, (req, res) => {
+app.get('/admin-login', (req, res) => {
+  if (req.isAuthenticated() && usuarioEhAdmin(req.user)) {
+    return res.redirect('/admin');
+  }
+
+  return res.sendFile(path.join(__dirname, 'public', 'admin-login.html'));
+});
+
+app.get('/agenda', exigeClientePagina, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'agenda.html'));
 });
 
-app.get('/admin', exigeAdmin, (req, res) => {
+app.get('/admin', exigeAdminPagina, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.get('/api/usuario', (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ logado: false });
-  }
-
-  const { senhaHash, ...usuarioSeguro } = req.user;
-
+app.get('/api/usuario', exigeLoginApi, (req, res) => {
   return res.json({
     logado: true,
     admin: usuarioEhAdmin(req.user),
-    usuario: usuarioSeguro
+    usuario: usuarioSeguro(req.user)
   });
 });
 
@@ -595,7 +775,7 @@ app.post('/api/agendamentos', exigeLoginApi, (req, res) => {
   });
 });
 
-app.get('/api/admin/agendamentos', exigeAdmin, (req, res) => {
+app.get('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
   const data = textoSeguro(req.query.data, 10);
   const inicio = textoSeguro(req.query.inicio, 10);
   const fim = textoSeguro(req.query.fim, 10);
@@ -626,8 +806,8 @@ app.get('/api/admin/agendamentos', exigeAdmin, (req, res) => {
   return res.json({ agendamentos: agendamentos.map(comValores) });
 });
 
-app.get('/api/admin/resumo', exigeAdmin, (req, res) => {
-  const hoje = dataLocalIso(new Date());
+app.get('/api/admin/resumo', exigeAdminApi, (req, res) => {
+  const hoje = hojeEmSaoPaulo();
   const pedida = textoSeguro(req.query.referencia, 10);
   const referencia = dataIsoValida(pedida) && dataReal(pedida) ? pedida : hoje;
   const [ano, mes, dia] = referencia.split('-').map(Number);
@@ -658,6 +838,25 @@ app.get('/api/admin/resumo', exigeAdmin, (req, res) => {
     STATUS_EM_ABERTO.includes(item.status)
   );
 
+  const doMes = ativos.filter((item) => String(item.data).startsWith(prefixoMes));
+  const resumoMes = Object.entries(SERVICOS)
+    .map(([id, servico]) => {
+      const itens = doMes.filter((item) => item.servico === id);
+      const concluidos = itens.filter((item) => item.status === 'concluido');
+
+      return {
+        servico: id,
+        nome: servico.nome,
+        concluidos: concluidos.length,
+        confirmados: itens.filter((item) => item.status === 'confirmado').length,
+        realizado: somar(concluidos),
+        previsto: somar(itens.filter((item) =>
+          [...STATUS_EM_ABERTO, 'concluido'].includes(item.status)
+        ))
+      };
+    })
+    .filter((item) => item.concluidos || item.confirmados || item.previsto);
+
   return res.json({
     referencia,
     mes: prefixoMes,
@@ -674,13 +873,14 @@ app.get('/api/admin/resumo', exigeAdmin, (req, res) => {
     aRealizarSemana: somar(aRealizarNaSemana),
     potencialSemana: somar(realizadosNaSemana) + somar(aRealizarNaSemana),
     naLixeira: todos.length - ativos.length,
+    resumoMes,
     servicos: Object.entries(SERVICOS).map(([id, servico]) => ({ id, ...servico }))
   });
 });
 
-app.get('/api/admin/fechamento', exigeAdmin, (req, res) => {
+app.get('/api/admin/fechamento', exigeAdminApi, (req, res) => {
   const pedida = textoSeguro(req.query.data, 10);
-  const data = dataIsoValida(pedida) && dataReal(pedida) ? pedida : dataLocalIso(new Date());
+  const data = dataIsoValida(pedida) && dataReal(pedida) ? pedida : hojeEmSaoPaulo();
 
   const doDia = removerLixeiraExpirada().filter((item) =>
     !item.excluidoEm && item.data === data
@@ -714,7 +914,7 @@ app.get('/api/admin/fechamento', exigeAdmin, (req, res) => {
   });
 });
 
-app.post('/api/admin/agendamentos', exigeAdmin, (req, res) => {
+app.post('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
   const { erro, dados } = validarAgendamento(req.body, { permitirPassado: true });
 
   if (erro) {
@@ -758,7 +958,7 @@ app.post('/api/admin/agendamentos', exigeAdmin, (req, res) => {
   });
 });
 
-app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdmin, (req, res) => {
+app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdminApi, (req, res) => {
   const resultado = transacaoAgendamentos((agendamentos) => {
     const agendamento = agendamentos.find((item) =>
       item.id === req.params.id && !item.excluidoEm
@@ -825,7 +1025,7 @@ app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdmin, (req, res) => {
   });
 });
 
-app.patch('/api/admin/agendamentos/:id/status', exigeAdmin, (req, res) => {
+app.patch('/api/admin/agendamentos/:id/status', exigeAdminApi, (req, res) => {
   const novoStatus = textoSeguro(req.body.status, 30);
 
   if (!STATUS_PERMITIDOS.includes(novoStatus)) {
@@ -870,7 +1070,7 @@ app.patch('/api/admin/agendamentos/:id/status', exigeAdmin, (req, res) => {
   });
 });
 
-app.delete('/api/admin/agendamentos/:id', exigeAdmin, (req, res) => {
+app.delete('/api/admin/agendamentos/:id', exigeAdminApi, (req, res) => {
   const agendamentos = lerAgendamentos();
   const agendamento = agendamentos.find((item) =>
     item.id === req.params.id && !item.excluidoEm
@@ -891,7 +1091,7 @@ app.delete('/api/admin/agendamentos/:id', exigeAdmin, (req, res) => {
   });
 });
 
-app.get('/api/admin/lixeira', exigeAdmin, (req, res) => {
+app.get('/api/admin/lixeira', exigeAdminApi, (req, res) => {
   const itens = removerLixeiraExpirada()
     .filter((item) => item.excluidoEm)
     .sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm))
@@ -907,7 +1107,7 @@ app.get('/api/admin/lixeira', exigeAdmin, (req, res) => {
   return res.json({ agendamentos: itens, diasNaLixeira: DIAS_NA_LIXEIRA });
 });
 
-app.post('/api/admin/lixeira/:id/restaurar', exigeAdmin, (req, res) => {
+app.post('/api/admin/lixeira/:id/restaurar', exigeAdminApi, (req, res) => {
   const resultado = transacaoAgendamentos((agendamentos) => {
     const agendamento = agendamentos.find((item) =>
       item.id === req.params.id && item.excluidoEm
@@ -963,7 +1163,7 @@ app.post('/api/admin/lixeira/:id/restaurar', exigeAdmin, (req, res) => {
   });
 });
 
-app.delete('/api/admin/lixeira/:id', exigeAdmin, (req, res) => {
+app.delete('/api/admin/lixeira/:id', exigeAdminApi, (req, res) => {
   const agendamentos = lerAgendamentos();
   const restantes = agendamentos.filter((item) =>
     !(item.id === req.params.id && item.excluidoEm)
@@ -977,12 +1177,31 @@ app.delete('/api/admin/lixeira/:id', exigeAdmin, (req, res) => {
   return res.status(204).send();
 });
 
-app.use((error, req, res, next) => {
-  console.error('Erro não tratado:', error);
-  res.status(500).json({ erro: 'Erro interno do servidor.' });
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ erro: 'Rota não encontrada.' });
+  }
+
+  return res.status(404).send('Página não encontrada.');
 });
 
-app.listen(PORT, () => {
-  console.log(`Barbearia Nogueira iniciada em http://localhost:${PORT}`);
-  console.log(`Painel administrativo: http://localhost:${PORT}/admin`);
+app.use((error, req, res, next) => {
+  console.error('Erro não tratado:', error);
+
+  if (res.headersSent) return next(error);
+
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ erro: 'Erro interno do servidor.' });
+  }
+
+  return res.status(500).send('Não foi possível carregar esta página.');
 });
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Barbearia Nogueira iniciada em http://localhost:${PORT}`);
+    console.log(`Painel administrativo: http://localhost:${PORT}/admin-login`);
+  });
+}
+
+module.exports = { app, configurarAdministrador };

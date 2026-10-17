@@ -55,6 +55,10 @@ const elements = {
   metricMonthNote: document.getElementById('metricMonthNote'),
   metricWeek: document.getElementById('metricWeek'),
   metricWeekNote: document.getElementById('metricWeekNote'),
+  serviceSummaryBody: document.getElementById('serviceSummaryBody'),
+  serviceSummaryEmpty: document.getElementById('serviceSummaryEmpty'),
+  serviceSummaryTable: document.getElementById('serviceSummaryTable'),
+  serviceSummaryTitle: document.getElementById('serviceSummaryTitle'),
   template: document.getElementById('appointmentTemplate'),
   toast: document.getElementById('toast'),
   bookingDialog: document.getElementById('bookingDialog'),
@@ -148,6 +152,11 @@ async function api(url, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
 
+  if (response.status === 401) {
+    window.location.href = '/admin-login';
+    throw new Error('Sessão expirada. Entre novamente.');
+  }
+
   if (response.status === 204) return null;
 
   const data = await response.json().catch(() => null);
@@ -157,7 +166,7 @@ async function api(url, { method = 'GET', body } = {}) {
   }
 
   if (data === null) {
-    window.location.href = '/login';
+    window.location.href = '/admin-login';
     throw new Error('Sessão expirada. Entre novamente.');
   }
 
@@ -179,7 +188,7 @@ async function loadAdminUser() {
   const response = await fetch('/api/usuario');
 
   if (!response.ok) {
-    window.location.href = '/login';
+    window.location.href = '/admin-login';
     return;
   }
 
@@ -290,6 +299,26 @@ function renderSummary(summary) {
   elements.metricWeek.textContent = formatCurrency(summary.potencialSemana);
   elements.metricWeekNote.textContent =
     `${formatCurrency(summary.realizadoSemana)} realizados · ${formatCurrency(summary.aRealizarSemana)} a realizar`;
+
+  elements.serviceSummaryTitle.textContent = `Por serviço em ${monthName}`;
+  elements.serviceSummaryBody.textContent = '';
+
+  summary.resumoMes.forEach((item) => {
+    const row = document.createElement('tr');
+
+    [item.nome, item.concluidos, item.confirmados, formatCurrency(item.realizado), formatCurrency(item.previsto)]
+      .forEach((value) => {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+
+    elements.serviceSummaryBody.appendChild(row);
+  });
+
+  const noServices = summary.resumoMes.length === 0;
+  elements.serviceSummaryTable.classList.toggle('hidden', noServices);
+  elements.serviceSummaryEmpty.classList.toggle('hidden', !noServices);
 
   elements.trashCount.textContent = summary.naLixeira;
   elements.trashCount.classList.toggle('hidden', summary.naLixeira === 0);

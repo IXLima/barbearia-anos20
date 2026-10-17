@@ -5,14 +5,15 @@ const {
   encontrarConflito,
   descreverConflito,
   gerarGrade,
-  horariosDisponiveis
+  horariosDisponiveis,
+  agoraEmSaoPaulo
 } = require('../services/agendaService');
 
 // 2031-03-10 é segunda-feira, 2031-03-15 sábado e 2031-03-16 domingo.
 const SEGUNDA = '2031-03-10';
 const SABADO = '2031-03-15';
 const DOMINGO = '2031-03-16';
-const ANTES = new Date(2031, 0, 1, 8, 0);
+const ANTES = { data: '2031-01-01', minutos: 8 * 60 };
 
 const agendamento = (extra) => ({
   id: 'a1',
@@ -98,7 +99,7 @@ test('no dia de hoje os horários que já passaram saem da lista', () => {
   const livres = horariosDisponiveis({
     data: SEGUNDA,
     agendamentos: [],
-    agora: new Date(2031, 2, 10, 14, 10)
+    agora: { data: SEGUNDA, minutos: 14 * 60 + 10 }
   });
 
   assert.strictEqual(livres[0], '14:30');
@@ -143,4 +144,16 @@ test('descrição do conflito traz nome e faixa de horário', () => {
     inicio: '14:30',
     fim: '15:00'
   });
+});
+
+test('agoraEmSaoPaulo usa o fuso da barbearia, não o do servidor', () => {
+  // 02:30 UTC de 11/03 ainda é 23:30 de 10/03 em São Paulo (UTC-3)
+  assert.deepStrictEqual(
+    agoraEmSaoPaulo(new Date('2031-03-11T02:30:00Z')),
+    { data: '2031-03-10', minutos: 23 * 60 + 30 }
+  );
+  assert.deepStrictEqual(
+    agoraEmSaoPaulo(new Date('2031-03-11T03:00:00Z')),
+    { data: '2031-03-11', minutos: 0 }
+  );
 });
