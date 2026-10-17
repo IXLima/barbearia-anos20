@@ -157,6 +157,26 @@
     .btn-primario:hover { background: transparent; color: var(--puro); outline: 1px solid var(--puro); }
     .btn-primario:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* Grade de horários disponíveis */
+    .horarios {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px;
+      padding-top: 4px;
+    }
+    .horario-btn {
+      padding: 10px 0; background: transparent; color: var(--branco);
+      border: 1px solid var(--borda); font-family: var(--fonte-mono);
+      font-size: 0.78rem; letter-spacing: 0.08em; cursor: pointer;
+      transition: all var(--t);
+    }
+    .horario-btn:hover { border-color: var(--meio); }
+    .horario-btn.ativo { background: var(--puro); color: var(--preto); border-color: var(--puro); }
+    .horarios-aviso { grid-column: 1 / -1; font-size: 0.76rem; color: var(--meio); }
+
+    .msg-erro {
+      display: none; border: 1px solid #d96868; color: #d96868;
+      padding: 12px 14px; font-size: 0.74rem; line-height: 1.6;
+    }
+
     .msg-sucesso {
       display: none; background: rgba(255,255,255,0.04);
       border: 1px solid var(--borda); color: var(--branco);
@@ -211,7 +231,7 @@
       <!-- COLUNA ESQUERDA: informações -->
       <div>
         <h2 class="info-titulo">Estamos aqui para você.</h2>
-        <p class="info-texto">Escolha o serviço e a data que preferir. Nossa equipe entrará em contato pelo WhatsApp para confirmar o horário disponível.</p>
+        <p class="info-texto">Escolha o serviço, a data e um dos horários disponíveis. Nossa equipe entrará em contato pelo WhatsApp para confirmar o seu atendimento.</p>
 
         <div class="info-item">
           <span class="info-icone">◎</span>
@@ -289,9 +309,18 @@
           </div>
 
           <div class="campo">
-            <label for="obs">Observações (opcional)</label>
-            <textarea id="obs" name="obs" placeholder="Alguma preferência de horário ou informação adicional?" rows="3"></textarea>
+            <label id="horarioLabel">Horário</label>
+            <div class="horarios" id="horarios" role="radiogroup" aria-labelledby="horarioLabel">
+              <p class="horarios-aviso">Escolha uma data para ver os horários disponíveis.</p>
+            </div>
           </div>
+
+          <div class="campo">
+            <label for="obs">Observações (opcional)</label>
+            <textarea id="obs" name="obs" placeholder="Alguma informação adicional?" rows="3"></textarea>
+          </div>
+
+          <div class="msg-erro" id="msgErro" role="alert"></div>
 
           <button type="submit" class="btn-primario" id="btnEnviar">
             Enviar Agendamento
@@ -300,7 +329,8 @@
           <!-- Mensagem de sucesso -->
           <div class="msg-sucesso" id="msgSucesso">
             <strong>✦ Agendamento recebido!</strong>
-            Entraremos em contato pelo WhatsApp em breve para confirmar o horário.
+            <span id="resumoReserva"></span><br>
+            Entraremos em contato pelo WhatsApp em breve para confirmar o seu horário.
           </div>
 
         </form>
@@ -356,41 +386,162 @@
       })
       .catch(() => window.location.href = '/login');
 
-    // ====== Data mínima (sem datas no passado) ======
+    // ====== Data mínima (sem datas no passado, no fuso do navegador) ======
     const dataInput = document.getElementById('data');
-    dataInput.min = new Date().toISOString().split('T')[0];
+    const servicoInput = document.getElementById('servico');
+    const horariosBox = document.getElementById('horarios');
+    const msgErro = document.getElementById('msgErro');
+
+    const hoje = new Date();
+    dataInput.min = [
+      hoje.getFullYear(),
+      String(hoje.getMonth() + 1).padStart(2, '0'),
+      String(hoje.getDate()).padStart(2, '0')
+    ].join('-');
+
+    // ====== Horários disponíveis (o servidor decide quais existem) ======
+    let horarioEscolhido = '';
+    let consultaAtual = 0;
+
+    function mostrarAvisoDeHorarios(texto) {
+      horariosBox.textContent = '';
+      const aviso = document.createElement('p');
+      aviso.className = 'horarios-aviso';
+      aviso.textContent = texto;
+      horariosBox.appendChild(aviso);
+    }
+
+    function escolherHorario(botao, horario) {
+      horarioEscolhido = horario;
+      msgErro.style.display = 'none';
+
+      horariosBox.querySelectorAll('.horario-btn').forEach((item) => {
+        const ativo = item === botao;
+        item.classList.toggle('ativo', ativo);
+        item.setAttribute('aria-checked', String(ativo));
+      });
+    }
+
+    async function carregarHorarios() {
+      horarioEscolhido = '';
+
+      if (!dataInput.value) {
+        mostrarAvisoDeHorarios('Escolha uma data para ver os horários disponíveis.');
+        return;
+      }
+
+      const consulta = ++consultaAtual;
+      mostrarAvisoDeHorarios('Carregando horários...');
+
+      try {
+        const params = new URLSearchParams({ data: dataInput.value });
+        if (servicoInput.value) params.set('servico', servicoInput.value);
+
+        const resposta = await fetch(`/api/agendamentos/horarios?${params}`);
+
+        if (resposta.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const corpo = await resposta.json();
+        if (consulta !== consultaAtual) return;
+
+        if (!resposta.ok) throw new Error(corpo.erro || 'Não foi possível carregar os horários.');
+
+        if (corpo.horarios.length === 0) {
+          mostrarAvisoDeHorarios(corpo.funcionaNoDia
+            ? 'Não há horários livres nesta data. Escolha outro dia.'
+            : 'A barbearia não atende neste dia. Escolha outra data.');
+          return;
+        }
+
+        horariosBox.textContent = '';
+        corpo.horarios.forEach((horario) => {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'horario-btn';
+          botao.textContent = horario;
+          botao.setAttribute('role', 'radio');
+          botao.setAttribute('aria-checked', 'false');
+          botao.addEventListener('click', () => escolherHorario(botao, horario));
+          horariosBox.appendChild(botao);
+        });
+      } catch (erro) {
+        if (consulta === consultaAtual) mostrarAvisoDeHorarios(erro.message);
+      }
+    }
+
+    dataInput.addEventListener('change', carregarHorarios);
+    servicoInput.addEventListener('change', carregarHorarios);
 
     // ====== Formulário ======
     const form     = document.getElementById('formAgenda');
     const btnEnviar = document.getElementById('btnEnviar');
     const msgSucesso = document.getElementById('msgSucesso');
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
+    function mostrarErro(texto) {
+      msgErro.textContent = texto;
+      msgErro.style.display = 'block';
+    }
 
-      // Coleta os dados do formulário
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgErro.style.display = 'none';
+
+      if (!horarioEscolhido) {
+        mostrarErro('Escolha um dos horários disponíveis.');
+        return;
+      }
+
       const dados = {
         nome:     document.getElementById('nome').value,
         telefone: document.getElementById('telefone').value,
-        servico:  document.getElementById('servico').value,
-        data:     document.getElementById('data').value,
+        servico:  servicoInput.value,
+        data:     dataInput.value,
+        horario:  horarioEscolhido,
         obs:      document.getElementById('obs').value,
       };
 
-      console.log('Agendamento:', dados);
-
-      // Simula envio (troque por fetch('/api/agendar', ...) no futuro)
       btnEnviar.textContent = 'Enviando...';
       btnEnviar.disabled = true;
 
-      setTimeout(() => {
+      try {
+        const resposta = await fetch('/api/agendamentos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+
+        if (resposta.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const corpo = await resposta.json().catch(() => ({}));
+
+        if (!resposta.ok) {
+          mostrarErro(corpo.erro || 'Não foi possível concluir o agendamento.');
+          if (resposta.status === 409) await carregarHorarios();
+          return;
+        }
+
+        const [ano, mes, dia] = dados.data.split('-');
+        document.getElementById('resumoReserva').textContent =
+          `${dia}/${mes}/${ano} às ${dados.horario}.`;
+
         form.style.opacity = '0';
         form.style.transition = '0.3s ease';
         setTimeout(() => {
           form.style.display = 'none';
           msgSucesso.style.display = 'block';
         }, 300);
-      }, 1500);
+      } catch (erro) {
+        mostrarErro('Sem conexão com o servidor. Tente novamente.');
+      } finally {
+        btnEnviar.textContent = 'Enviar Agendamento';
+        btnEnviar.disabled = false;
+      }
     });
   </script>
 

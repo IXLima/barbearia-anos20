@@ -36,16 +36,22 @@
         <p class="eyebrow">— Painel administrativo</p>
         <h1>Agenda da <em>barbearia.</em></h1>
         <p class="page-description">
-          Consulte o movimento do dia, acompanhe a semana e atualize cada atendimento.
+          Consulte todos os atendimentos, acompanhe os ganhos e organize a agenda:
+          remarque, cancele ou agende manualmente.
         </p>
       </div>
 
-      <button id="refreshButton" class="button button--primary" type="button">
-        Atualizar agenda
-      </button>
+      <div class="heading-actions">
+        <button id="newButton" class="button button--primary" type="button">
+          Novo agendamento
+        </button>
+        <button id="refreshButton" class="button button--ghost" type="button">
+          Atualizar
+        </button>
+      </div>
     </section>
 
-    <section class="metrics" aria-label="Resumo dos agendamentos">
+    <section class="metrics" aria-label="Resumo dos agendamentos e ganhos">
       <article class="metric-card">
         <span>Hoje</span>
         <strong id="metricToday">0</strong>
@@ -59,38 +65,32 @@
       <article class="metric-card">
         <span>Confirmados</span>
         <strong id="metricConfirmed">0</strong>
-        <small>na semana</small>
+        <small>na semana exibida</small>
       </article>
-      <article class="metric-card">
-        <span>Faturamento previsto</span>
-        <strong id="metricRevenue">R$ 0</strong>
-        <small>agenda exibida</small>
+      <article class="metric-card metric-card--money">
+        <span id="metricMonthLabel">Ganhos no mês</span>
+        <strong id="metricMonth">R$ 0</strong>
+        <small id="metricMonthNote">atendimentos concluídos</small>
+      </article>
+      <article class="metric-card metric-card--money">
+        <span>Potencial da semana</span>
+        <strong id="metricWeek">R$ 0</strong>
+        <small id="metricWeekNote">realizado + a realizar</small>
       </article>
     </section>
 
     <section class="toolbar">
       <div class="view-switch" role="tablist" aria-label="Tipo de visualização">
-        <button
-          id="dailyTab"
-          class="view-button active"
-          type="button"
-          role="tab"
-          aria-selected="true"
-        >
-          Dia
-        </button>
-        <button
-          id="weeklyTab"
-          class="view-button"
-          type="button"
-          role="tab"
-          aria-selected="false"
-        >
-          Semana
+        <button class="view-button active" type="button" role="tab" aria-selected="true" data-mode="daily">Dia</button>
+        <button class="view-button" type="button" role="tab" aria-selected="false" data-mode="weekly">Semana</button>
+        <button class="view-button" type="button" role="tab" aria-selected="false" data-mode="monthly">Mês</button>
+        <button class="view-button" type="button" role="tab" aria-selected="false" data-mode="all">Todos</button>
+        <button class="view-button" type="button" role="tab" aria-selected="false" data-mode="trash">
+          Lixeira <span id="trashCount" class="tab-count hidden">0</span>
         </button>
       </div>
 
-      <div class="date-controls">
+      <div id="dateControls" class="date-controls">
         <button id="previousButton" class="icon-button" type="button" aria-label="Período anterior">
           ←
         </button>
@@ -105,13 +105,14 @@
         </button>
       </div>
 
-      <label class="filter-field">
+      <label id="statusField" class="filter-field">
         <span>Status</span>
         <select id="statusFilter">
           <option value="">Todos</option>
           <option value="pendente">Pendentes</option>
           <option value="confirmado">Confirmados</option>
           <option value="concluido">Concluídos</option>
+          <option value="remarcacao_solicitada">Remarcação solicitada</option>
           <option value="cancelado">Cancelados</option>
           <option value="nao_compareceu">Não compareceu</option>
         </select>
@@ -123,18 +124,24 @@
         <div>
           <p class="eyebrow">— Compromissos</p>
           <h2 id="periodTitle">Agenda de hoje</h2>
+          <p id="panelNote" class="panel-note hidden"></p>
         </div>
-        <span id="resultCount" class="result-count">0 registros</span>
+        <div class="panel-actions">
+          <button id="closingButton" class="button button--ghost" type="button">
+            Fechamento do dia
+          </button>
+          <span id="resultCount" class="result-count">0 registros</span>
+        </div>
       </div>
 
       <div id="loadingState" class="state-message">Carregando agendamentos...</div>
 
       <div id="emptyState" class="state-message hidden">
-        <strong>Nenhum agendamento encontrado.</strong>
-        <span>O período selecionado está livre.</span>
+        <strong id="emptyTitle">Nenhum agendamento encontrado.</strong>
+        <span id="emptyText">O período selecionado está livre.</span>
       </div>
 
-      <div id="dailyView" class="daily-view hidden"></div>
+      <div id="listView" class="list-view hidden"></div>
       <div id="weeklyView" class="weekly-view hidden"></div>
     </section>
   </main>
@@ -157,23 +164,160 @@
 
         <div class="appointment-details">
           <a data-field="telefoneLink">
-            <span>WhatsApp</span>
+            <span>Telefone / WhatsApp</span>
             <strong data-field="telefone"></strong>
           </a>
-          <p data-field="observacoes"></p>
+          <div>
+            <span>Observações</span>
+            <p data-field="observacoes"></p>
+          </div>
         </div>
 
+        <p class="trash-notice hidden" data-field="aviso"></p>
+
         <div class="appointment-actions">
-          <button data-status="confirmado" type="button">Confirmar</button>
-          <button data-status="concluido" type="button">Concluir</button>
-          <button data-status="cancelado" type="button">Cancelar</button>
-          <a data-field="whatsappButton" class="whatsapp-button" target="_blank" rel="noopener noreferrer">
-            WhatsApp
+          <button data-action="confirmar" type="button">Confirmar</button>
+          <button data-action="concluir" type="button">Concluir</button>
+          <button data-action="remarcar" type="button">Remarcar</button>
+          <button data-action="reativar" type="button">Reativar</button>
+          <button data-action="cancelar" class="danger" type="button">Cancelar</button>
+          <button data-action="excluir" class="danger" type="button">Excluir</button>
+          <button data-action="restaurar" type="button">Restaurar / realocar</button>
+          <button data-action="apagar" class="danger" type="button">Apagar definitivamente</button>
+          <a data-field="confirmButton" class="whatsapp-button hidden" target="_blank" rel="noopener noreferrer">
+            Enviar confirmação
+          </a>
+          <a data-field="changeButton" class="whatsapp-button hidden" target="_blank" rel="noopener noreferrer">
+            Avisar cliente sobre alteração
           </a>
         </div>
       </div>
     </article>
   </template>
+
+  <dialog id="bookingDialog" class="dialog" aria-labelledby="bookingTitle">
+    <form id="bookingForm" class="dialog-form" novalidate>
+      <header class="dialog-header">
+        <p class="eyebrow">— Agendamento manual</p>
+        <h2 id="bookingTitle">Novo agendamento</h2>
+      </header>
+
+      <div class="form-grid">
+        <label class="field field--wide">
+          <span>Nome completo</span>
+          <input id="bookingName" name="nome" type="text" maxlength="100" autocomplete="off" required>
+        </label>
+
+        <label class="field">
+          <span>Telefone / WhatsApp</span>
+          <input id="bookingPhone" name="telefone" type="tel" maxlength="30" placeholder="(19) 99999-0000" autocomplete="off" required>
+        </label>
+
+        <label class="field">
+          <span>Serviço</span>
+          <select id="bookingService" name="servico" required></select>
+        </label>
+
+        <label class="field">
+          <span>Data</span>
+          <input id="bookingDate" name="data" type="date" required>
+        </label>
+
+        <label class="field">
+          <span>Horário</span>
+          <input id="bookingTime" name="horario" type="time" required>
+          <small class="field-hint">Qualquer horário vale (ex.: 14:45). Conflitos são bloqueados.</small>
+        </label>
+
+        <label class="field field--wide">
+          <span>Situação</span>
+          <select id="bookingStatus" name="status">
+            <option value="confirmado">Confirmado</option>
+            <option value="pendente">Pendente</option>
+            <option value="concluido">Concluído (atendimento já realizado)</option>
+          </select>
+        </label>
+
+        <label class="field field--wide">
+          <span>Observações</span>
+          <textarea id="bookingNotes" name="observacoes" maxlength="500" rows="3"></textarea>
+        </label>
+      </div>
+
+      <p id="bookingError" class="form-error hidden" role="alert"></p>
+
+      <footer class="dialog-actions">
+        <button type="button" class="button button--ghost" data-close>Cancelar</button>
+        <button id="bookingSubmit" type="submit" class="button button--primary">Salvar agendamento</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="rescheduleDialog" class="dialog dialog--narrow" aria-labelledby="rescheduleTitle">
+    <form id="rescheduleForm" class="dialog-form" novalidate>
+      <header class="dialog-header">
+        <p id="rescheduleEyebrow" class="eyebrow">— Remarcar</p>
+        <h2 id="rescheduleTitle">Novo horário</h2>
+        <p id="rescheduleSummary" class="dialog-subtitle"></p>
+      </header>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Data</span>
+          <input id="rescheduleDate" type="date" required>
+        </label>
+
+        <label class="field">
+          <span>Horário</span>
+          <input id="rescheduleTime" type="time" required>
+        </label>
+
+        <small class="field-hint field--wide">Qualquer horário vale (ex.: 14:45). Conflitos são bloqueados.</small>
+
+        <label id="rescheduleKeepField" class="check-field field--wide hidden">
+          <input id="rescheduleKeep" type="checkbox">
+          <span>O cliente já concordou com o novo horário (manter como Confirmado). Sem isso, volta para Pendente.</span>
+        </label>
+      </div>
+
+      <p id="rescheduleError" class="form-error hidden" role="alert"></p>
+
+      <footer class="dialog-actions">
+        <button type="button" class="button button--ghost" data-close>Voltar</button>
+        <button id="rescheduleSubmit" type="submit" class="button button--primary">Confirmar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="closingDialog" class="dialog" aria-labelledby="closingTitle">
+    <div class="dialog-form">
+      <header class="dialog-header">
+        <p class="eyebrow">— Fechamento do dia</p>
+        <h2 id="closingTitle">Fechamento</h2>
+        <p id="closingStatus" class="dialog-subtitle"></p>
+      </header>
+
+      <dl class="closing-grid">
+        <div><dt>Agendamentos</dt><dd id="closingTotal">0</dd></div>
+        <div><dt>Concluídos</dt><dd id="closingDone">0</dd></div>
+        <div><dt>Cancelados</dt><dd id="closingCanceled">0</dd></div>
+        <div><dt>Não compareceu</dt><dd id="closingNoShow">0</dd></div>
+        <div class="closing-money"><dt>Valor previsto</dt><dd id="closingExpected">R$ 0</dd></div>
+        <div class="closing-money"><dt>Valor realizado</dt><dd id="closingEarned">R$ 0</dd></div>
+      </dl>
+
+      <div id="closingOpen" class="closing-open hidden">
+        <strong>Existem atendimentos ainda não finalizados neste dia.</strong>
+        <ul id="closingOpenList"></ul>
+      </div>
+
+      <footer class="dialog-actions">
+        <button type="button" class="button button--primary" data-close>Fechar</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script src="/js/admin.js" defer></script>
 </body>

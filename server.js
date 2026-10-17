@@ -9,11 +9,51 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
+const {
+  DURACAO_PADRAO,
+  paraHorario,
+  paraMinutos,
+  dataLocalIso,
+  funcionamentoDoDia,
+  encontrarConflito,
+  descreverConflito,
+  horariosDisponiveis
+} = require('./services/agendaService');
+const {
+  gerarMensagemConfirmacao,
+  gerarMensagemRemarcacao,
+  gerarLinkWhatsApp
+} = require('./services/whatsappService');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const USERS_FILE = path.join(__dirname, 'users.json');
 const APPOINTMENTS_FILE = path.join(__dirname, 'agendamentos.json');
+const BLOCKS_FILE = path.join(__dirname, 'bloqueios.json');
+
+const SERVICOS = {
+  corte: { nome: 'Corte Clássico', preco: 45, duracao: 30 },
+  barba: { nome: 'Barba Completa', preco: 35, duracao: 30 },
+  combo: { nome: 'Corte + Barba', preco: 70, duracao: 30 },
+  relaxamento: { nome: 'Relaxamento', preco: 55, duracao: 30 },
+  pigmentacao: { nome: 'Pigmentação', preco: 120, duracao: 30 },
+  vip: { nome: 'Pacote VIP', preco: 150, duracao: 30 }
+};
+
+const STATUS_PERMITIDOS = [
+  'pendente',
+  'confirmado',
+  'concluido',
+  'cancelado',
+  'nao_compareceu',
+  'remarcacao_solicitada'
+];
+
+const STATUS_EM_ABERTO = ['pendente', 'confirmado', 'remarcacao_solicitada'];
+
+const DIAS_NA_LIXEIRA = 30;
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
 function readJsonFile(filePath, fallback = []) {
   if (!fs.existsSync(filePath)) return fallback;
@@ -48,6 +88,32 @@ function salvarAgendamentos(agendamentos) {
   writeJsonFile(APPOINTMENTS_FILE, agendamentos);
 }
 
+// Faixas em que o cliente não pode agendar: [{ data, inicio, fim, motivo }]. Arquivo opcional.
+function lerBloqueios() {
+  return readJsonFile(BLOCKS_FILE);
+}
+
+// Leitura, checagem e gravação acontecem no mesmo trecho síncrono: o Node não atende outra
+// requisição no meio, então duas reservas simultâneas nunca passam juntas pela checagem.
+// Não coloque await dentro de operacao(). Com mais de um processo, use banco com restrição única.
+function transacaoAgendamentos(operacao) {
+  const agendamentos = lerAgendamentos();
+  const resultado = operacao(agendamentos);
+
+  if (!resultado.erro) {
+    salvarAgendamentos(agendamentos);
+  }
+
+  return resultado;
+}
+
+function registrarHistorico(agendamento, evento) {
+  agendamento.historico = [
+    ...(agendamento.historico || []),
+    { ...evento, alteradoEm: new Date().toISOString() }
+  ];
+}
+
 function encontrarPorId(id) {
   return lerUsuarios().find((usuario) => usuario.id === id);
 }
@@ -72,6 +138,147 @@ function dataIsoValida(data) {
 
 function horarioValido(horario) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(horario || ''));
+}
+
+function dataReal(data) {
+  const [ano, mes, dia] = data.split('-').map(Number);
+  const date = new Date(ano, mes - 1, dia);
+  return (
+    date.getFullYear() === ano &&
+    date.getMonth() === mes - 1 &&
+    date.getDate() === dia
+  );
+}
+
+function servicoExiste(servico) {
+  return Object.hasOwn(SERVICOS, servico);
+}
+
+function precoDoServico(servico) {
+  return servicoExiste(servico) ? SERVICOS[servico].preco : 0;
+}
+
+function duracaoDoServico(servico) {
+  return servicoExiste(servico) ? SERVICOS[servico].duracao : DURACAO_PADRAO;
+}
+
+function linksWhatsApp(agendamento) {
+  if (agendamento.excluidoEm || !STATUS_EM_ABERTO.includes(agendamento.status)) {
+    return { confirmacao: null, remarcacao: null };
+  }
+
+  const ultimaRemarcacao = [...(agendamento.historico || [])]
+    .reverse()
+    .find((evento) => evento.tipo === 'remarcacao');
+
+  return {
+    confirmacao: gerarLinkWhatsApp(
+      agendamento.telefone,
+      gerarMensagemConfirmacao(agendamento)
+    ),
+    remarcacao: ultimaRemarcacao
+      ? gerarLinkWhatsApp(
+        agendamento.telefone,
+        gerarMensagemRemarcacao(agendamento, {
+          data: ultimaRemarcacao.dataAnterior,
+          horario: ultimaRemarcacao.horarioAnterior
+        })
+      )
+      : null
+  };
+}
+
+function comValores(agendamento) {
+  const completo = {
+    ...agendamento,
+    servicoNome: servicoExiste(agendamento.servico)
+      ? SERVICOS[agendamento.servico].nome
+      : agendamento.servico,
+    preco: precoDoServico(agendamento.servico),
+    duracao: agendamento.duracao || DURACAO_PADRAO
+  };
+
+  return {
+    ...completo,
+    horarioFim: paraHorario(paraMinutos(completo.horario) + completo.duracao),
+    links: linksWhatsApp(completo)
+  };
+}
+
+function erroDeConflito(conflito) {
+  const { id, nome, inicio, fim } = descreverConflito(conflito);
+
+  return {
+    status: 409,
+    erro: `Este horário entra em conflito com o atendimento de ${nome}, das ${inicio} às ${fim}.`,
+    conflito: { id, nome, inicio, fim }
+  };
+}
+
+function validarAgendamento(body, { permitirPassado = false } = {}) {
+  const dados = {
+    nome: textoSeguro(body.nome, 100),
+    telefone: textoSeguro(body.telefone, 30),
+    servico: textoSeguro(body.servico, 80),
+    data: textoSeguro(body.data, 10),
+    horario: textoSeguro(body.horario, 5),
+    observacoes: textoSeguro(body.observacoes || body.obs, 500)
+  };
+
+  dados.duracao = duracaoDoServico(dados.servico);
+
+  if (!dados.nome || !dados.telefone || !dados.servico || !dados.data || !dados.horario) {
+    return { erro: 'Preencha nome, telefone, serviço, data e horário.' };
+  }
+
+  if (!telefoneValido(dados.telefone)) {
+    return { erro: 'Telefone inválido.' };
+  }
+
+  if (!servicoExiste(dados.servico)) {
+    return { erro: 'Serviço inválido.' };
+  }
+
+  if (!dataIsoValida(dados.data) || !dataReal(dados.data) || !horarioValido(dados.horario)) {
+    return { erro: 'Data ou horário inválido.' };
+  }
+
+  if (!permitirPassado) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (new Date(`${dados.data}T00:00:00`) < hoje) {
+      return { erro: 'Escolha uma data futura ou de hoje.' };
+    }
+  }
+
+  return { dados };
+}
+
+function criarAgendamento(dados, extras) {
+  const agora = new Date().toISOString();
+
+  return {
+    id: `ag_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    ...dados,
+    ...extras,
+    criadoEm: agora,
+    atualizadoEm: agora
+  };
+}
+
+function removerLixeiraExpirada() {
+  const agendamentos = lerAgendamentos();
+  const limite = Date.now() - DIAS_NA_LIXEIRA * UM_DIA_MS;
+  const restantes = agendamentos.filter((item) =>
+    !item.excluidoEm || new Date(item.excluidoEm).getTime() > limite
+  );
+
+  if (restantes.length !== agendamentos.length) {
+    salvarAgendamentos(restantes);
+  }
+
+  return restantes;
 }
 
 app.use(express.json({ limit: '50kb' }));
@@ -165,6 +372,16 @@ passport.use(new LocalStrategy(
 function exigeLogin(req, res, next) {
   if (req.isAuthenticated()) return next();
   return res.redirect('/login?aviso=entre-para-agendar');
+}
+
+function exigeLoginApi(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  return res.status(401).json({ erro: 'Entre na sua conta para continuar.' });
+}
+
+function enviarErro(res, resultado) {
+  const { status = 400, ...corpo } = resultado;
+  return res.status(status).json(corpo);
 }
 
 function usuarioEhAdmin(usuario) {
@@ -313,70 +530,68 @@ app.get('/api/usuario', (req, res) => {
   });
 });
 
-app.post('/api/agendamentos', exigeLogin, (req, res) => {
-  const nome = textoSeguro(req.body.nome, 100);
-  const telefone = textoSeguro(req.body.telefone, 30);
-  const servico = textoSeguro(req.body.servico, 80);
-  const data = textoSeguro(req.body.data, 10);
-  const horario = textoSeguro(req.body.horario, 5);
-  const observacoes = textoSeguro(req.body.observacoes || req.body.obs, 500);
+app.get('/api/agendamentos/horarios', exigeLoginApi, (req, res) => {
+  const data = textoSeguro(req.query.data, 10);
 
-  if (!nome || !telefone || !servico || !data || !horario) {
-    return res.status(400).json({
-      erro: 'Preencha nome, telefone, serviço, data e horário.'
-    });
+  if (!dataIsoValida(data) || !dataReal(data)) {
+    return res.status(400).json({ erro: 'Data inválida.' });
   }
 
-  if (!telefoneValido(telefone)) {
-    return res.status(400).json({ erro: 'Telefone inválido.' });
-  }
+  const duracao = duracaoDoServico(textoSeguro(req.query.servico, 80));
 
-  if (!dataIsoValida(data) || !horarioValido(horario)) {
-    return res.status(400).json({ erro: 'Data ou horário inválido.' });
-  }
+  res.set('Cache-Control', 'no-store');
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dataSolicitada = new Date(`${data}T00:00:00`);
-
-  if (Number.isNaN(dataSolicitada.getTime()) || dataSolicitada < hoje) {
-    return res.status(400).json({ erro: 'Escolha uma data futura ou de hoje.' });
-  }
-
-  const agendamentos = lerAgendamentos();
-
-  const conflito = agendamentos.some((item) =>
-    item.data === data &&
-    item.horario === horario &&
-    !['cancelado'].includes(item.status)
-  );
-
-  if (conflito) {
-    return res.status(409).json({
-      erro: 'Este horário já está ocupado. Escolha outro horário.'
-    });
-  }
-
-  const agendamento = {
-    id: `ag_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    usuarioId: req.user.id,
-    nome,
-    telefone,
-    servico,
+  return res.json({
     data,
-    horario,
-    observacoes,
-    status: 'pendente',
-    criadoEm: new Date().toISOString(),
-    atualizadoEm: new Date().toISOString()
-  };
+    duracao,
+    funcionaNoDia: Boolean(funcionamentoDoDia(data)),
+    horarios: horariosDisponiveis({
+      data,
+      duracao,
+      agendamentos: lerAgendamentos(),
+      bloqueios: lerBloqueios()
+    })
+  });
+});
 
-  agendamentos.push(agendamento);
-  salvarAgendamentos(agendamentos);
+app.post('/api/agendamentos', exigeLoginApi, (req, res) => {
+  const { erro, dados } = validarAgendamento(req.body);
+
+  if (erro) {
+    return res.status(400).json({ erro });
+  }
+
+  const resultado = transacaoAgendamentos((agendamentos) => {
+    const disponiveis = horariosDisponiveis({
+      data: dados.data,
+      duracao: dados.duracao,
+      agendamentos,
+      bloqueios: lerBloqueios()
+    });
+
+    if (!disponiveis.includes(dados.horario)) {
+      return {
+        status: 409,
+        erro: 'Este horário não está disponível. Escolha um dos horários exibidos.'
+      };
+    }
+
+    const agendamento = criarAgendamento(dados, {
+      usuarioId: req.user.id,
+      status: 'pendente'
+    });
+
+    agendamentos.push(agendamento);
+    return { agendamento };
+  });
+
+  if (resultado.erro) {
+    return enviarErro(res, resultado);
+  }
 
   return res.status(201).json({
     mensagem: 'Agendamento recebido.',
-    agendamento
+    agendamento: resultado.agendamento
   });
 });
 
@@ -386,7 +601,7 @@ app.get('/api/admin/agendamentos', exigeAdmin, (req, res) => {
   const fim = textoSeguro(req.query.fim, 10);
   const status = textoSeguro(req.query.status, 20);
 
-  let agendamentos = lerAgendamentos();
+  let agendamentos = removerLixeiraExpirada().filter((item) => !item.excluidoEm);
 
   if (dataIsoValida(data)) {
     agendamentos = agendamentos.filter((item) => item.data === data);
@@ -408,45 +623,354 @@ app.get('/api/admin/agendamentos', exigeAdmin, (req, res) => {
     `${a.data} ${a.horario}`.localeCompare(`${b.data} ${b.horario}`)
   );
 
-  return res.json({ agendamentos });
+  return res.json({ agendamentos: agendamentos.map(comValores) });
 });
 
-app.patch('/api/admin/agendamentos/:id/status', exigeAdmin, (req, res) => {
-  const statusPermitidos = [
-    'pendente',
-    'confirmado',
-    'concluido',
-    'cancelado',
-    'nao_compareceu'
-  ];
+app.get('/api/admin/resumo', exigeAdmin, (req, res) => {
+  const hoje = dataLocalIso(new Date());
+  const pedida = textoSeguro(req.query.referencia, 10);
+  const referencia = dataIsoValida(pedida) && dataReal(pedida) ? pedida : hoje;
+  const [ano, mes, dia] = referencia.split('-').map(Number);
 
-  const novoStatus = textoSeguro(req.body.status, 30);
+  const segunda = new Date(ano, mes - 1, dia);
+  const diaDaSemana = segunda.getDay();
+  segunda.setDate(segunda.getDate() + (diaDaSemana === 0 ? -6 : 1 - diaDaSemana));
+  const domingo = new Date(segunda);
+  domingo.setDate(domingo.getDate() + 6);
 
-  if (!statusPermitidos.includes(novoStatus)) {
+  const inicioSemana = dataLocalIso(segunda);
+  const fimSemana = dataLocalIso(domingo);
+  const prefixoMes = referencia.slice(0, 7);
+
+  const todos = removerLixeiraExpirada();
+  const ativos = todos.filter((item) => !item.excluidoEm);
+  const somar = (lista) =>
+    lista.reduce((total, item) => total + precoDoServico(item.servico), 0);
+
+  const concluidosNoMes = ativos.filter((item) =>
+    item.status === 'concluido' && String(item.data).startsWith(prefixoMes)
+  );
+  const daSemana = ativos.filter((item) =>
+    item.data >= inicioSemana && item.data <= fimSemana
+  );
+  const realizadosNaSemana = daSemana.filter((item) => item.status === 'concluido');
+  const aRealizarNaSemana = daSemana.filter((item) =>
+    STATUS_EM_ABERTO.includes(item.status)
+  );
+
+  return res.json({
+    referencia,
+    mes: prefixoMes,
+    inicioSemana,
+    fimSemana,
+    hoje: ativos.filter((item) =>
+      item.data === hoje && [...STATUS_EM_ABERTO, 'concluido'].includes(item.status)
+    ).length,
+    pendentes: ativos.filter((item) => item.status === 'pendente').length,
+    confirmadosNaSemana: daSemana.filter((item) => item.status === 'confirmado').length,
+    ganhosMes: somar(concluidosNoMes),
+    atendimentosConcluidosMes: concluidosNoMes.length,
+    realizadoSemana: somar(realizadosNaSemana),
+    aRealizarSemana: somar(aRealizarNaSemana),
+    potencialSemana: somar(realizadosNaSemana) + somar(aRealizarNaSemana),
+    naLixeira: todos.length - ativos.length,
+    servicos: Object.entries(SERVICOS).map(([id, servico]) => ({ id, ...servico }))
+  });
+});
+
+app.get('/api/admin/fechamento', exigeAdmin, (req, res) => {
+  const pedida = textoSeguro(req.query.data, 10);
+  const data = dataIsoValida(pedida) && dataReal(pedida) ? pedida : dataLocalIso(new Date());
+
+  const doDia = removerLixeiraExpirada().filter((item) =>
+    !item.excluidoEm && item.data === data
+  );
+
+  const comStatus = (...status) => doDia.filter((item) => status.includes(item.status));
+  const somar = (lista) =>
+    lista.reduce((total, item) => total + precoDoServico(item.servico), 0);
+
+  const naoFinalizados = doDia
+    .filter((item) => STATUS_EM_ABERTO.includes(item.status))
+    .sort((a, b) => a.horario.localeCompare(b.horario))
+    .map(({ id, nome, horario, status }) => ({ id, nome, horario, status }));
+
+  return res.json({
+    data,
+    total: doDia.length,
+    concluidos: comStatus('concluido').length,
+    cancelados: comStatus('cancelado').length,
+    naoCompareceu: comStatus('nao_compareceu').length,
+    pendentes: comStatus('pendente').length,
+    confirmados: comStatus('confirmado').length,
+    remarcacaoSolicitada: comStatus('remarcacao_solicitada').length,
+    valorPrevisto: somar(comStatus(...STATUS_EM_ABERTO, 'concluido')),
+    valorRealizado: somar(comStatus('concluido')),
+    encerrado: naoFinalizados.length === 0,
+    aviso: naoFinalizados.length > 0
+      ? 'Existem atendimentos ainda não finalizados neste dia.'
+      : null,
+    naoFinalizados
+  });
+});
+
+app.post('/api/admin/agendamentos', exigeAdmin, (req, res) => {
+  const { erro, dados } = validarAgendamento(req.body, { permitirPassado: true });
+
+  if (erro) {
+    return res.status(400).json({ erro });
+  }
+
+  const status = textoSeguro(req.body.status || 'confirmado', 30);
+
+  if (!STATUS_PERMITIDOS.includes(status)) {
     return res.status(400).json({ erro: 'Status inválido.' });
   }
 
+  const resultado = transacaoAgendamentos((agendamentos) => {
+    if (status !== 'cancelado') {
+      const conflito = encontrarConflito(agendamentos, {
+        data: dados.data,
+        horario: dados.horario,
+        duracao: dados.duracao
+      });
+
+      if (conflito) return erroDeConflito(conflito);
+    }
+
+    const agendamento = criarAgendamento(dados, {
+      usuarioId: req.user.id,
+      origem: 'admin',
+      status
+    });
+
+    agendamentos.push(agendamento);
+    return { agendamento };
+  });
+
+  if (resultado.erro) {
+    return enviarErro(res, resultado);
+  }
+
+  return res.status(201).json({
+    mensagem: 'Agendamento criado.',
+    agendamento: comValores(resultado.agendamento)
+  });
+});
+
+app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdmin, (req, res) => {
+  const resultado = transacaoAgendamentos((agendamentos) => {
+    const agendamento = agendamentos.find((item) =>
+      item.id === req.params.id && !item.excluidoEm
+    );
+
+    if (!agendamento) {
+      return { status: 404, erro: 'Agendamento não encontrado.' };
+    }
+
+    if (!STATUS_EM_ABERTO.includes(agendamento.status)) {
+      return {
+        status: 409,
+        erro: 'Só é possível remarcar agendamentos pendentes, confirmados ou com remarcação solicitada.'
+      };
+    }
+
+    const data = textoSeguro(req.body.data || agendamento.data, 10);
+    const horario = textoSeguro(req.body.horario || agendamento.horario, 5);
+
+    if (!dataIsoValida(data) || !dataReal(data) || !horarioValido(horario)) {
+      return { status: 400, erro: 'Data ou horário inválido.' };
+    }
+
+    if (data === agendamento.data && horario === agendamento.horario) {
+      return { status: 400, erro: 'Altere a data ou o horário.' };
+    }
+
+    const conflito = encontrarConflito(agendamentos, {
+      data,
+      horario,
+      duracao: agendamento.duracao || DURACAO_PADRAO,
+      ignorarId: agendamento.id
+    });
+
+    if (conflito) return erroDeConflito(conflito);
+
+    registrarHistorico(agendamento, {
+      tipo: 'remarcacao',
+      dataAnterior: agendamento.data,
+      horarioAnterior: agendamento.horario,
+      dataNova: data,
+      horarioNovo: horario
+    });
+
+    // Sem a confirmação do cliente para o novo horário, o atendimento volta a ficar pendente.
+    const clienteJaConcordou =
+      req.body.manterConfirmado === true && agendamento.status === 'confirmado';
+
+    agendamento.data = data;
+    agendamento.horario = horario;
+    agendamento.status = clienteJaConcordou ? 'confirmado' : 'pendente';
+    agendamento.atualizadoEm = new Date().toISOString();
+
+    return { agendamento };
+  });
+
+  if (resultado.erro) {
+    return enviarErro(res, resultado);
+  }
+
+  return res.json({
+    mensagem: 'Agendamento remarcado.',
+    agendamento: comValores(resultado.agendamento)
+  });
+});
+
+app.patch('/api/admin/agendamentos/:id/status', exigeAdmin, (req, res) => {
+  const novoStatus = textoSeguro(req.body.status, 30);
+
+  if (!STATUS_PERMITIDOS.includes(novoStatus)) {
+    return res.status(400).json({ erro: 'Status inválido.' });
+  }
+
+  const resultado = transacaoAgendamentos((agendamentos) => {
+    const agendamento = agendamentos.find((item) =>
+      item.id === req.params.id && !item.excluidoEm
+    );
+
+    if (!agendamento) {
+      return { status: 404, erro: 'Agendamento não encontrado.' };
+    }
+
+    const reativando = agendamento.status === 'cancelado' && novoStatus !== 'cancelado';
+
+    if (reativando) {
+      const conflito = encontrarConflito(agendamentos, {
+        data: agendamento.data,
+        horario: agendamento.horario,
+        duracao: agendamento.duracao || DURACAO_PADRAO,
+        ignorarId: agendamento.id
+      });
+
+      if (conflito) return erroDeConflito(conflito);
+    }
+
+    agendamento.status = novoStatus;
+    agendamento.atualizadoEm = new Date().toISOString();
+
+    return { agendamento };
+  });
+
+  if (resultado.erro) {
+    return enviarErro(res, resultado);
+  }
+
+  return res.json({
+    mensagem: 'Status atualizado.',
+    agendamento: comValores(resultado.agendamento)
+  });
+});
+
+app.delete('/api/admin/agendamentos/:id', exigeAdmin, (req, res) => {
   const agendamentos = lerAgendamentos();
-  const agendamento = agendamentos.find((item) => item.id === req.params.id);
+  const agendamento = agendamentos.find((item) =>
+    item.id === req.params.id && !item.excluidoEm
+  );
 
   if (!agendamento) {
     return res.status(404).json({ erro: 'Agendamento não encontrado.' });
   }
 
-  agendamento.status = novoStatus;
-  agendamento.atualizadoEm = new Date().toISOString();
+  agendamento.excluidoEm = new Date().toISOString();
+  agendamento.atualizadoEm = agendamento.excluidoEm;
 
   salvarAgendamentos(agendamentos);
 
-  return res.json({ mensagem: 'Status atualizado.', agendamento });
+  return res.json({
+    mensagem: 'Agendamento movido para a lixeira.',
+    agendamento: comValores(agendamento)
+  });
 });
 
-app.delete('/api/admin/agendamentos/:id', exigeAdmin, (req, res) => {
+app.get('/api/admin/lixeira', exigeAdmin, (req, res) => {
+  const itens = removerLixeiraExpirada()
+    .filter((item) => item.excluidoEm)
+    .sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm))
+    .map((item) => {
+      const expiraEm = new Date(item.excluidoEm).getTime() + DIAS_NA_LIXEIRA * UM_DIA_MS;
+
+      return {
+        ...comValores(item),
+        diasRestantes: Math.max(1, Math.ceil((expiraEm - Date.now()) / UM_DIA_MS))
+      };
+    });
+
+  return res.json({ agendamentos: itens, diasNaLixeira: DIAS_NA_LIXEIRA });
+});
+
+app.post('/api/admin/lixeira/:id/restaurar', exigeAdmin, (req, res) => {
+  const resultado = transacaoAgendamentos((agendamentos) => {
+    const agendamento = agendamentos.find((item) =>
+      item.id === req.params.id && item.excluidoEm
+    );
+
+    if (!agendamento) {
+      return { status: 404, erro: 'Agendamento não encontrado na lixeira.' };
+    }
+
+    const data = textoSeguro(req.body.data || agendamento.data, 10);
+    const horario = textoSeguro(req.body.horario || agendamento.horario, 5);
+
+    if (!dataIsoValida(data) || !dataReal(data) || !horarioValido(horario)) {
+      return { status: 400, erro: 'Data ou horário inválido.' };
+    }
+
+    if (agendamento.status !== 'cancelado') {
+      const conflito = encontrarConflito(agendamentos, {
+        data,
+        horario,
+        duracao: agendamento.duracao || DURACAO_PADRAO,
+        ignorarId: agendamento.id
+      });
+
+      if (conflito) return erroDeConflito(conflito);
+    }
+
+    if (data !== agendamento.data || horario !== agendamento.horario) {
+      registrarHistorico(agendamento, {
+        tipo: 'remarcacao',
+        dataAnterior: agendamento.data,
+        horarioAnterior: agendamento.horario,
+        dataNova: data,
+        horarioNovo: horario
+      });
+    }
+
+    agendamento.data = data;
+    agendamento.horario = horario;
+    delete agendamento.excluidoEm;
+    agendamento.atualizadoEm = new Date().toISOString();
+
+    return { agendamento };
+  });
+
+  if (resultado.erro) {
+    return enviarErro(res, resultado);
+  }
+
+  return res.json({
+    mensagem: 'Agendamento restaurado.',
+    agendamento: comValores(resultado.agendamento)
+  });
+});
+
+app.delete('/api/admin/lixeira/:id', exigeAdmin, (req, res) => {
   const agendamentos = lerAgendamentos();
-  const restantes = agendamentos.filter((item) => item.id !== req.params.id);
+  const restantes = agendamentos.filter((item) =>
+    !(item.id === req.params.id && item.excluidoEm)
+  );
 
   if (restantes.length === agendamentos.length) {
-    return res.status(404).json({ erro: 'Agendamento não encontrado.' });
+    return res.status(404).json({ erro: 'Agendamento não encontrado na lixeira.' });
   }
 
   salvarAgendamentos(restantes);

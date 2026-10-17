@@ -20,6 +20,11 @@ node_modules/
 # Arquivos que armazenam informações de clientes, tokens ou agendamentos.
 # Evita o vazamento de informações sensíveis (PII) no repositório público.
 users.json
+agendamentos.json
+agendamentos.json.tmp
+bloqueios.json
+users.json.tmp
+graphify-out/
 
 # =========================================================================
 # IGNORAR LOGS DE ERRO
