@@ -284,11 +284,19 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
+
+// ============================================================
+// 6. DATA MÍNIMA NO INPUT DE DATA
+// ============================================================
+// Impede que o usuário selecione datas no passado.
+// new Date() retorna a data/hora atual.
+// toISOString() converte para o formato "2024-01-15T..."
+// .split('T')[0] pega só a parte da data "2024-01-15"
+// ============================================================
+
 const dateInput = document.getElementById('date');
 
 if (dateInput) {
   const today = new Date().toISOString().split('T')[0];
   dateInput.setAttribute('min', today); // Define a data mínima
 }
-
-
