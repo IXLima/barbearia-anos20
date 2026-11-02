@@ -326,14 +326,15 @@
             Enviar Agendamento
           </button>
 
-          <!-- Mensagem de sucesso -->
-          <div class="msg-sucesso" id="msgSucesso">
-            <strong>✦ Agendamento recebido!</strong>
-            <span id="resumoReserva"></span><br>
-            Entraremos em contato pelo WhatsApp em breve para confirmar o seu horário.
-          </div>
-
         </form>
+
+        <!-- Confirmação: fica fora do formulário, senão some junto com ele -->
+        <div class="msg-sucesso" id="msgSucesso">
+          <strong>✦ Agendamento recebido!</strong>
+          <span id="resumoReserva"></span><br>
+          Confirme pelo WhatsApp da barbearia para garantir o seu horário.
+          <a class="btn-primario" id="linkWhatsApp" href="#" target="_blank" rel="noopener">Confirmar pelo WhatsApp</a>
+        </div>
       </div>
 
     </div>
@@ -388,6 +389,10 @@
 
     // ====== Data mínima (sem datas no passado, no fuso do navegador) ======
     const dataInput = document.getElementById('data');
+
+    // Número do WhatsApp da barbearia, com código do país e DDD.
+    const WHATSAPP_BARBEARIA = '551992958673';
+    const NOMES_SERVICOS = { corte: 'Corte Clássico', barba: 'Barba Completa', combo: 'Corte + Barba' };
     const servicoInput = document.getElementById('servico');
     const horariosBox = document.getElementById('horarios');
     const msgErro = document.getElementById('msgErro');
@@ -527,8 +532,18 @@
         }
 
         const [ano, mes, dia] = dados.data.split('-');
-        document.getElementById('resumoReserva').textContent =
-          `${dia}/${mes}/${ano} às ${dados.horario}.`;
+        const dataBR = `${dia}/${mes}/${ano}`;
+        document.getElementById('resumoReserva').textContent = `${dataBR} às ${dados.horario}.`;
+
+        const mensagem = [
+          `Olá! Meu nome é ${dados.nome.trim()}. Gostaria de confirmar o meu horário:`,
+          `Serviço: ${NOMES_SERVICOS[dados.servico]}`,
+          `Data: ${dataBR}`,
+          `Horário: ${dados.horario}`,
+          `Observação: ${dados.obs.trim() || 'nenhuma'}`
+        ].join('\n');
+        document.getElementById('linkWhatsApp').href =
+          `https://wa.me/${WHATSAPP_BARBEARIA}?text=${encodeURIComponent(mensagem)}`;
 
         form.style.opacity = '0';
         form.style.transition = '0.3s ease';
