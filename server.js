@@ -6,6 +6,8 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -490,10 +492,24 @@ if (banco) bancoPronto.then(iniciarAdministrador);
 else iniciarAdministrador();
 
 if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Defina SESSION_SECRET antes de iniciar em produção.');
+  }
   console.warn('SESSION_SECRET ausente: usando um segredo de desenvolvimento. Defina SESSION_SECRET no .env.');
 }
 
+// Limite de tentativas de login: evita adivinhar senha por força bruta.
+const limiteDeLogin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas. Aguarde alguns minutos e tente de novo.' }
+});
+
 app.disable('x-powered-by');
+// CSP fica desligada: as páginas usam scripts e estilos embutidos e fontes do Google.
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
@@ -727,15 +743,15 @@ app.get('/auth/google/callback', (req, res, next) => {
   })(req, res, next);
 });
 
-app.post('/auth/local', (req, res, next) => {
+app.post('/auth/local', limiteDeLogin, (req, res, next) => {
   entrarUsuario(req, res, next, false);
 });
 
-app.post('/auth/admin', (req, res, next) => {
+app.post('/auth/admin', limiteDeLogin, (req, res, next) => {
   entrarUsuario(req, res, next, true);
 });
 
-app.post('/auth/registro', (req, res) => {
+app.post('/auth/registro', limiteDeLogin, (req, res) => {
   const nome = textoSeguro(req.body.nome, 100);
   const email = textoSeguro(req.body.email, 150).toLowerCase();
   const senha = String(req.body.senha || '');
