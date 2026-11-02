@@ -51,6 +51,7 @@ const elements = {
   bulkBar: document.getElementById('bulkBar'),
   bulkCount: document.getElementById('bulkCount'),
   bulkComplete: document.getElementById('bulkComplete'),
+  bulkRestore: document.getElementById('bulkRestore'),
   bulkDelete: document.getElementById('bulkDelete'),
   bulkClear: document.getElementById('bulkClear'),
   bulkAll: document.getElementById('bulkAll'),
@@ -357,20 +358,18 @@ function createAppointmentCard(appointment) {
   const fragment = elements.template.content.cloneNode(true);
   const card = fragment.querySelector('.appointment-card');
 
-  if (!inTrash) {
-    const marcar = document.createElement('input');
-    marcar.type = 'checkbox';
-    marcar.className = 'bulk-check';
-    marcar.setAttribute('aria-label', `Selecionar agendamento de ${appointment.nome}`);
-    marcar.checked = state.selected.has(appointment.id);
-    marcar.addEventListener('change', () => {
-      if (marcar.checked) state.selected.add(appointment.id);
-      else state.selected.delete(appointment.id);
-      updateBulkBar();
-    });
-    // Dentro da coluna de horário: não muda a grade de duas colunas do card.
-    card.querySelector('.appointment-time').prepend(marcar);
-  }
+  const marcar = document.createElement('input');
+  marcar.type = 'checkbox';
+  marcar.className = 'bulk-check';
+  marcar.setAttribute('aria-label', `Selecionar agendamento de ${appointment.nome}`);
+  marcar.checked = state.selected.has(appointment.id);
+  marcar.addEventListener('change', () => {
+    if (marcar.checked) state.selected.add(appointment.id);
+    else state.selected.delete(appointment.id);
+    updateBulkBar();
+  });
+  // Dentro da coluna de horário: não muda a grade de duas colunas do card.
+  card.querySelector('.appointment-time').prepend(marcar);
 
   setText(fragment, 'horario', appointment.horario);
   setText(fragment, 'dataCurta', formatShortDate(appointment.data));
@@ -432,13 +431,20 @@ function createAppointmentCard(appointment) {
 
 function updateBulkBar() {
   const total = state.selected.size;
-  const modoComLista = ['daily', 'monthly', 'all'].includes(state.mode);
+  const modoComLista = ['daily', 'monthly', 'all', 'trash'].includes(state.mode);
+  const inTrash = state.mode === 'trash';
   const visiveis = state.appointments.length;
 
   elements.bulkBar.classList.toggle('hidden', !modoComLista || visiveis === 0);
   elements.bulkCount.textContent = `${total} ${total === 1 ? 'selecionado' : 'selecionados'}`;
   elements.bulkAll.checked = visiveis > 0 && total === visiveis;
+
+  // Na lixeira: restaurar e apagar definitivamente. Nas outras telas: concluir e excluir.
+  elements.bulkComplete.classList.toggle('hidden', inTrash);
+  elements.bulkRestore.classList.toggle('hidden', !inTrash);
+  elements.bulkDelete.textContent = inTrash ? 'Apagar definitivamente' : 'Excluir selecionados';
   elements.bulkComplete.disabled = total === 0;
+  elements.bulkRestore.disabled = total === 0;
   elements.bulkDelete.disabled = total === 0;
 }
 
@@ -853,7 +859,7 @@ elements.rescheduleForm.addEventListener('submit', submitReschedule);
 });
 
 // Ações em massa usam as mesmas rotas de uma ação só, uma por agendamento.
-async function runBulk(ids, task, successMessage) {
+async function runBulk(ids, task, successMessage, dicaFalhas = '') {
   let falhas = 0;
 
   for (const id of ids) {
@@ -867,7 +873,9 @@ async function runBulk(ids, task, successMessage) {
   state.selected.clear();
   refresh();
   showToast(
-    falhas ? `${ids.length - falhas} de ${ids.length} atualizados. ${falhas} falharam.` : successMessage,
+    falhas
+      ? `${ids.length - falhas} de ${ids.length} atualizados. ${falhas} falharam. ${dicaFalhas}`.trim()
+      : successMessage,
     falhas ? 'error' : 'success'
   );
 }
@@ -882,6 +890,18 @@ elements.bulkComplete.addEventListener('click', () =>
 
 elements.bulkDelete.addEventListener('click', () => {
   const total = state.selected.size;
+
+  if (state.mode === 'trash') {
+    if (!window.confirm(`Apagar definitivamente ${total} agendamento(s)? Esta ação não pode ser desfeita.`)) return;
+
+    runBulk(
+      [...state.selected],
+      (id) => api(`/api/admin/lixeira/${id}`, { method: 'DELETE' }),
+      'Apagados definitivamente.'
+    );
+    return;
+  }
+
   if (!window.confirm(`Mover ${total} agendamento(s) para a lixeira? Dá para restaurar em até 30 dias.`)) return;
 
   runBulk(
@@ -890,6 +910,17 @@ elements.bulkDelete.addEventListener('click', () => {
     'Movidos para a lixeira.'
   );
 });
+
+// Restaura cada um no horário original. Quem tiver conflito fica na lixeira:
+// esses precisam ser restaurados um a um, com "Restaurar" para escolher outro horário.
+elements.bulkRestore.addEventListener('click', () =>
+  runBulk(
+    [...state.selected],
+    (id) => api(`/api/admin/lixeira/${id}/restaurar`, { method: 'POST', body: {} }),
+    'Agendamentos restaurados.',
+    'Os que falharam continuam na lixeira, geralmente por conflito de horário. Restaure esses um a um para escolher outro horário.'
+  )
+);
 
 elements.bulkAll.addEventListener('change', () => {
   const marcado = elements.bulkAll.checked;
