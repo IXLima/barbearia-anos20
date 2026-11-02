@@ -9,6 +9,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
+const PgSession = require('connect-pg-simple')(session);
 
 const {
   DURACAO_PADRAO,
@@ -103,26 +105,85 @@ function papelDo(usuario) {
   return usuario?.papel === 'admin' ? 'admin' : 'cliente';
 }
 
+// Com DATABASE_URL (Postgres do Supabase) os dados ficam em memória e são gravados no banco em
+// segundo plano. shortcut: a gravação é assíncrona, então uma falha no banco aparece só no log;
+// com mais de um processo, troque o cache por leitura direta do banco.
+const banco = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  : null;
+const cache = { usuarios: [], agendamentos: [], bloqueios: [] };
+let filaDeGravacao = Promise.resolve();
+
+async function carregarBanco() {
+  if (!banco) return;
+
+  const [usuarios, agendamentos, bloqueios] = await Promise.all([
+    banco.query('select dados from usuarios'),
+    banco.query('select dados from agendamentos'),
+    banco.query('select dados from bloqueios order by id')
+  ]);
+  cache.usuarios = usuarios.rows.map((linha) => linha.dados);
+  cache.agendamentos = agendamentos.rows.map((linha) => linha.dados);
+  cache.bloqueios = bloqueios.rows.map((linha) => linha.dados);
+}
+
+function gravarNoBanco(tabela, linhas) {
+  filaDeGravacao = filaDeGravacao.then(async () => {
+    const cliente = await banco.connect();
+    try {
+      await cliente.query('begin');
+      await cliente.query(`delete from ${tabela}`);
+      for (const dados of linhas) {
+        if (tabela === 'usuarios') {
+          await cliente.query('insert into usuarios (id, email, dados) values ($1, $2, $3)', [dados.id, dados.email || null, dados]);
+        } else {
+          await cliente.query('insert into agendamentos (id, data, status, dados) values ($1, $2, $3, $4)', [dados.id, dados.data, dados.status, dados]);
+        }
+      }
+      await cliente.query('commit');
+    } catch (erro) {
+      await cliente.query('rollback');
+      console.error(`Falha ao gravar ${tabela} no banco:`, erro.message);
+    } finally {
+      cliente.release();
+    }
+  });
+}
+
 function lerUsuarios() {
+  if (banco) return structuredClone(cache.usuarios).map(normalizarUsuario);
   return readJsonFile(USERS_FILE).map(normalizarUsuario);
 }
 
 function salvarUsuarios(usuarios) {
-  writeJsonFile(USERS_FILE, usuarios);
+  if (!banco) return writeJsonFile(USERS_FILE, usuarios);
+
+  cache.usuarios = structuredClone(usuarios);
+  gravarNoBanco('usuarios', cache.usuarios);
 }
 
 function lerAgendamentos() {
+  if (banco) return structuredClone(cache.agendamentos).map(normalizarAgendamento);
   return readJsonFile(APPOINTMENTS_FILE).map(normalizarAgendamento);
 }
 
 function salvarAgendamentos(agendamentos) {
-  writeJsonFile(APPOINTMENTS_FILE, agendamentos);
+  if (!banco) return writeJsonFile(APPOINTMENTS_FILE, agendamentos);
+
+  cache.agendamentos = structuredClone(agendamentos);
+  gravarNoBanco('agendamentos', cache.agendamentos);
 }
 
 // Faixas em que o cliente não pode agendar: [{ data, inicio, fim, motivo }]. Arquivo opcional.
 function lerBloqueios() {
+  if (banco) return structuredClone(cache.bloqueios);
   return readJsonFile(BLOCKS_FILE);
 }
+
+const bancoPronto = carregarBanco().catch((erro) => {
+  console.error('Não foi possível carregar os dados do banco:', erro.message);
+  process.exit(1);
+});
 
 // Leitura, checagem e gravação acontecem no mesmo trecho síncrono: o Node não atende outra
 // requisição no meio, então duas reservas simultâneas nunca passam juntas pela checagem.
@@ -400,7 +461,11 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
+// Atrás do proxy da hospedagem (Render), sem isso o cookie seguro não é enviado.
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+
 app.use(session({
+  store: banco ? new PgSession({ pool: banco, createTableIfMissing: true }) : undefined,
   secret: process.env.SESSION_SECRET || 'somente-desenvolvimento-troque-no-env',
   resave: false,
   saveUninitialized: false,
@@ -1198,9 +1263,11 @@ app.use((error, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Barbearia Nogueira iniciada em http://localhost:${PORT}`);
-    console.log(`Painel administrativo: http://localhost:${PORT}/admin-login`);
+  bancoPronto.then(() => {
+    app.listen(PORT, () => {
+      console.log(`Barbearia Nogueira iniciada em http://localhost:${PORT}`);
+      console.log(`Painel administrativo: http://localhost:${PORT}/admin-login`);
+    });
   });
 }
 
