@@ -349,6 +349,7 @@ function createAppointmentCard(appointment) {
   const inTrash = state.mode === 'trash';
   const fragment = elements.template.content.cloneNode(true);
   const card = fragment.querySelector('.appointment-card');
+  card.dataset.id = appointment.id;
 
   setText(fragment, 'horario', appointment.horario);
   setText(fragment, 'dataCurta', formatShortDate(appointment.data));
@@ -414,6 +415,13 @@ function renderList() {
   state.appointments.forEach((appointment) => {
     elements.listView.appendChild(createAppointmentCard(appointment));
   });
+
+  // Link vindo da mensagem do WhatsApp: mostra o agendamento em destaque.
+  const destaque = elements.listView.querySelector(`[data-id="${CSS.escape(agendamentoDoLink || '')}"]`);
+  if (destaque) {
+    destaque.style.outline = '2px solid var(--puro, #fff)';
+    destaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   elements.listView.classList.remove('hidden');
 }
@@ -806,4 +814,6 @@ elements.rescheduleForm.addEventListener('submit', submitReschedule);
   });
 });
 
-Promise.all([loadAdminUser(), refresh()]);
+// Abre a lista completa quando o admin chega pelo link de um agendamento.
+const agendamentoDoLink = new URLSearchParams(location.search).get('agendamento');
+Promise.all([loadAdminUser(), agendamentoDoLink ? setMode('all') : refresh()]);

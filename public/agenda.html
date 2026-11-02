@@ -544,7 +544,8 @@
           `Serviço: ${NOMES_SERVICOS[dados.servico]}`,
           `Data: ${dataBR}`,
           `Horário: ${dados.horario}`,
-          `Observação: ${dados.obs.trim() || 'nenhuma'}`
+          `Observação: ${dados.obs.trim() || 'nenhuma'}`,
+          `Painel: ${location.origin}/admin?agendamento=${corpo.agendamento.id}`
         ].join('\n');
         document.getElementById('linkWhatsApp').href =
           `https://wa.me/${WHATSAPP_BARBEARIA}?text=${encodeURIComponent(mensagem)}`;
