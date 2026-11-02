@@ -9,6 +9,7 @@ const pastaTemporaria = fs.mkdtempSync(
 );
 
 process.env.DATA_DIR = pastaTemporaria;
+process.env.DATABASE_URL = ''; // o teste usa arquivos temporários, não o banco do .env
 process.env.SESSION_SECRET = 'segredo-exclusivo-para-teste';
 process.env.ADMIN_NAME = 'Admin Teste';
 process.env.ADMIN_EMAIL = 'admin@teste.local';

@@ -447,11 +447,17 @@ function removerLixeiraExpirada() {
   return restantes;
 }
 
-try {
-  configurarAdministrador();
-} catch (error) {
-  console.error('Não foi possível configurar a conta administrativa:', error.message);
-}
+// Com banco, espera os dados carregarem; senão a conta admin seria gravada sobre um cache vazio.
+const iniciarAdministrador = () => {
+  try {
+    configurarAdministrador();
+  } catch (error) {
+    console.error('Não foi possível configurar a conta administrativa:', error.message);
+  }
+};
+
+if (banco) bancoPronto.then(iniciarAdministrador);
+else iniciarAdministrador();
 
 if (!process.env.SESSION_SECRET) {
   console.warn('SESSION_SECRET ausente: usando um segredo de desenvolvimento. Defina SESSION_SECRET no .env.');
