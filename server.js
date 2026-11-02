@@ -89,12 +89,25 @@ function writeJsonFile(filePath, data) {
 const STATUS_ANTIGOS = { aceito: 'confirmado', recusado: 'cancelado' };
 
 // Dados antigos continuam válidos: role vira papel, aceito/recusado viram confirmado/cancelado.
+// Admin sem perfil (contas antigas) passa a ser dono.
 function normalizarUsuario(usuario) {
-  if (usuario.papel) return usuario;
+  if (usuario.papel) {
+    return usuario.papel === 'admin' && !usuario.perfil ? { ...usuario, perfil: 'dono' } : usuario;
+  }
 
   const { role, ...resto } = usuario;
-  return { ...resto, papel: role === 'admin' ? 'admin' : 'cliente' };
+  return role === 'admin'
+    ? { ...resto, papel: 'admin', perfil: 'dono' }
+    : { ...resto, papel: 'cliente' };
 }
+
+// Perfis da equipe administrativa e o que cada um pode fazer.
+const PERFIS_ADMIN = {
+  dono: ['agendamentos:ler', 'agendamentos:editar', 'relatorios:ler', 'equipe:gerenciar'],
+  agendamentos: ['agendamentos:ler', 'agendamentos:editar'],
+  relatorios: ['relatorios:ler']
+};
+const PERFIS_VALIDOS = Object.keys(PERFIS_ADMIN);
 
 function normalizarAgendamento(agendamento) {
   const status = STATUS_ANTIGOS[agendamento.status];
@@ -103,6 +116,15 @@ function normalizarAgendamento(agendamento) {
 
 function papelDo(usuario) {
   return usuario?.papel === 'admin' ? 'admin' : 'cliente';
+}
+
+function permissoesDo(usuario) {
+  if (papelDo(usuario) !== 'admin') return [];
+  return PERFIS_ADMIN[usuario.perfil] || [];
+}
+
+function temPermissao(usuario, permissao) {
+  return permissoesDo(usuario).includes(permissao);
 }
 
 // Com DATABASE_URL (Postgres do Supabase) os dados ficam em memória e são gravados no banco em
@@ -257,6 +279,9 @@ function configurarAdministrador() {
     if (existente?.tipo !== 'google' || existente.papel === 'admin') return false;
 
     existente.papel = 'admin';
+
+
+    existente.perfil = 'dono';
     existente.atualizadoEm = agora;
     salvarUsuarios(usuarios);
     return true;
@@ -269,6 +294,9 @@ function configurarAdministrador() {
     if (!mudou) return false;
 
     existente.papel = 'admin';
+
+
+    existente.perfil = 'dono';
     existente.nome = existente.nome || nome;
 
     if (existente.tipo !== 'google') {
@@ -286,6 +314,8 @@ function configurarAdministrador() {
       foto: '',
       tipo: 'local',
       papel: 'admin',
+
+      perfil: 'dono',
       criadoEm: agora
     });
   }
@@ -515,6 +545,21 @@ if (googleConfigurado) {
       if (!usuario) {
         const emailGoogle = normalizarEmail(profile.emails?.[0]?.value);
         const emailVerificado = Boolean(profile.emails?.[0]?.verified);
+
+        // Convite de admin feito pelo dono: a conta Google com esse e-mail verificado assume o perfil.
+        const convite = emailVerificado && emailGoogle
+          ? usuarios.find((item) => item.tipo === 'convite' && normalizarEmail(item.email) === emailGoogle)
+          : undefined;
+
+        if (convite) {
+          convite.googleId = profile.id;
+          convite.tipo = 'google';
+          convite.foto = profile.photos?.[0]?.value || convite.foto || '';
+          convite.atualizadoEm = new Date().toISOString();
+          salvarUsuarios(usuarios);
+          return done(null, convite);
+        }
+
         const ehAdmin = emailVerificado &&
           emailGoogle !== '' &&
           emailGoogle === normalizarEmail(process.env.ADMIN_EMAIL);
@@ -527,6 +572,8 @@ if (googleConfigurado) {
           foto: profile.photos?.[0]?.value || '',
           tipo: 'google',
           papel: ehAdmin ? 'admin' : 'cliente',
+
+          perfil: ehAdmin ? 'dono' : undefined,
           criadoEm: new Date().toISOString()
         };
 
@@ -601,16 +648,20 @@ function exigeLoginApi(req, res, next) {
   return res.status(401).json({ erro: 'Entre na sua conta para continuar.' });
 }
 
-function exigeAdminApi(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ erro: 'Entre como administrador para continuar.' });
-  }
+// Cada rota administrativa pede uma permissão. A checagem é feita a cada requisição,
+// com o usuário lido do armazenamento, então rebaixar um admin vale na hora.
+function exigePermissao(permissao) {
+  return (req, res, next) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ erro: 'Entre como administrador para continuar.' });
+    }
 
-  if (!usuarioEhAdmin(req.user)) {
-    return res.status(403).json({ erro: 'Esta ação é exclusiva da administração.' });
-  }
+    if (!temPermissao(req.user, permissao)) {
+      return res.status(403).json({ erro: 'Seu perfil não tem permissão para esta ação.' });
+    }
 
-  return next();
+    return next();
+  };
 }
 
 function enviarErro(res, resultado) {
@@ -773,10 +824,120 @@ app.get('/admin', exigeAdminPagina, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// Equipe administrativa: só o dono gerencia. Convites ficam pendentes até a conta Google ou a senha ser usada.
+app.get('/api/admin/equipe', exigePermissao('equipe:gerenciar'), (req, res) => {
+  const equipe = lerUsuarios()
+    .filter((usuario) => papelDo(usuario) === 'admin')
+    .map(usuarioSeguro);
+
+  return res.json({ equipe });
+});
+
+app.post('/api/admin/equipe', exigePermissao('equipe:gerenciar'), (req, res) => {
+  const email = normalizarEmail(req.body.email);
+  const nome = textoSeguro(req.body.nome, 80);
+  const perfil = textoSeguro(req.body.perfil, 20);
+  const senha = String(req.body.senha || '');
+
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  }
+
+  if (!PERFIS_VALIDOS.includes(perfil)) {
+    return res.status(400).json({ erro: 'Escolha um perfil válido.' });
+  }
+
+  if (senha && senha.length < 8) {
+    return res.status(400).json({ erro: 'A senha precisa ter pelo menos 8 caracteres.' });
+  }
+
+  const usuarios = lerUsuarios();
+  const existente = usuarios.find((usuario) => normalizarEmail(usuario.email) === email);
+
+  if (existente?.papel === 'admin') {
+    return res.status(409).json({ erro: 'Este e-mail já faz parte da equipe. Altere o perfil na lista.' });
+  }
+
+  const agora = new Date().toISOString();
+
+  if (existente) {
+    existente.papel = 'admin';
+    existente.perfil = perfil;
+    existente.nome = existente.nome || nome;
+    existente.atualizadoEm = agora;
+  } else {
+    usuarios.push({
+      id: `admin_${crypto.randomUUID()}`,
+      nome: nome || email,
+      email,
+      senhaHash: senha ? bcrypt.hashSync(senha, 12) : undefined,
+      foto: '',
+      tipo: senha ? 'local' : 'convite',
+      papel: 'admin',
+      perfil,
+      criadoEm: agora
+    });
+  }
+
+  salvarUsuarios(usuarios);
+  return res.status(201).json({ mensagem: 'Administrador adicionado.' });
+});
+
+app.patch('/api/admin/equipe/:id', exigePermissao('equipe:gerenciar'), (req, res) => {
+  const perfil = textoSeguro(req.body.perfil, 20);
+
+  if (!PERFIS_VALIDOS.includes(perfil)) {
+    return res.status(400).json({ erro: 'Escolha um perfil válido.' });
+  }
+
+  const usuarios = lerUsuarios();
+  const alvo = usuarios.find((usuario) => usuario.id === req.params.id && papelDo(usuario) === 'admin');
+
+  if (!alvo) return res.status(404).json({ erro: 'Administrador não encontrado.' });
+
+  const donos = usuarios.filter((usuario) => papelDo(usuario) === 'admin' && usuario.perfil === 'dono');
+  if (alvo.perfil === 'dono' && perfil !== 'dono' && donos.length <= 1) {
+    return res.status(400).json({ erro: 'Mantenha pelo menos um dono na equipe.' });
+  }
+
+  alvo.perfil = perfil;
+  alvo.atualizadoEm = new Date().toISOString();
+  salvarUsuarios(usuarios);
+  return res.json({ mensagem: 'Perfil atualizado.' });
+});
+
+app.delete('/api/admin/equipe/:id', exigePermissao('equipe:gerenciar'), (req, res) => {
+  const usuarios = lerUsuarios();
+  const alvo = usuarios.find((usuario) => usuario.id === req.params.id && papelDo(usuario) === 'admin');
+
+  if (!alvo) return res.status(404).json({ erro: 'Administrador não encontrado.' });
+
+  if (alvo.id === req.user.id) {
+    return res.status(400).json({ erro: 'Você não pode remover o seu próprio acesso.' });
+  }
+
+  const donos = usuarios.filter((usuario) => papelDo(usuario) === 'admin' && usuario.perfil === 'dono');
+  if (alvo.perfil === 'dono' && donos.length <= 1) {
+    return res.status(400).json({ erro: 'Mantenha pelo menos um dono na equipe.' });
+  }
+
+  // Convite que nunca entrou some; conta que já existia volta a ser cliente.
+  const restantes = alvo.tipo === 'convite'
+    ? usuarios.filter((usuario) => usuario.id !== alvo.id)
+    : usuarios.map((usuario) => (usuario.id === alvo.id
+      ? { ...usuario, papel: 'cliente', perfil: undefined, atualizadoEm: new Date().toISOString() }
+      : usuario));
+
+  salvarUsuarios(restantes);
+  return res.status(204).send();
+});
+
 app.get('/api/usuario', exigeLoginApi, (req, res) => {
   return res.json({
     logado: true,
     admin: usuarioEhAdmin(req.user),
+    perfil: req.user.perfil || null,
+    permissoes: permissoesDo(req.user),
     usuario: usuarioSeguro(req.user)
   });
 });
@@ -846,7 +1007,7 @@ app.post('/api/agendamentos', exigeLoginApi, (req, res) => {
   });
 });
 
-app.get('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
+app.get('/api/admin/agendamentos', exigePermissao('agendamentos:ler'), (req, res) => {
   const data = textoSeguro(req.query.data, 10);
   const inicio = textoSeguro(req.query.inicio, 10);
   const fim = textoSeguro(req.query.fim, 10);
@@ -877,7 +1038,7 @@ app.get('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
   return res.json({ agendamentos: agendamentos.map(comValores) });
 });
 
-app.get('/api/admin/resumo', exigeAdminApi, (req, res) => {
+app.get('/api/admin/resumo', exigePermissao('relatorios:ler'), (req, res) => {
   const hoje = hojeEmSaoPaulo();
   const pedida = textoSeguro(req.query.referencia, 10);
   const referencia = dataIsoValida(pedida) && dataReal(pedida) ? pedida : hoje;
@@ -949,7 +1110,7 @@ app.get('/api/admin/resumo', exigeAdminApi, (req, res) => {
   });
 });
 
-app.get('/api/admin/fechamento', exigeAdminApi, (req, res) => {
+app.get('/api/admin/fechamento', exigePermissao('relatorios:ler'), (req, res) => {
   const pedida = textoSeguro(req.query.data, 10);
   const data = dataIsoValida(pedida) && dataReal(pedida) ? pedida : hojeEmSaoPaulo();
 
@@ -985,7 +1146,7 @@ app.get('/api/admin/fechamento', exigeAdminApi, (req, res) => {
   });
 });
 
-app.post('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
+app.post('/api/admin/agendamentos', exigePermissao('agendamentos:editar'), (req, res) => {
   const { erro, dados } = validarAgendamento(req.body, { permitirPassado: true });
 
   if (erro) {
@@ -1029,7 +1190,7 @@ app.post('/api/admin/agendamentos', exigeAdminApi, (req, res) => {
   });
 });
 
-app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdminApi, (req, res) => {
+app.patch('/api/admin/agendamentos/:id/remarcar', exigePermissao('agendamentos:editar'), (req, res) => {
   const resultado = transacaoAgendamentos((agendamentos) => {
     const agendamento = agendamentos.find((item) =>
       item.id === req.params.id && !item.excluidoEm
@@ -1096,7 +1257,7 @@ app.patch('/api/admin/agendamentos/:id/remarcar', exigeAdminApi, (req, res) => {
   });
 });
 
-app.patch('/api/admin/agendamentos/:id/status', exigeAdminApi, (req, res) => {
+app.patch('/api/admin/agendamentos/:id/status', exigePermissao('agendamentos:editar'), (req, res) => {
   const novoStatus = textoSeguro(req.body.status, 30);
 
   if (!STATUS_PERMITIDOS.includes(novoStatus)) {
@@ -1141,7 +1302,7 @@ app.patch('/api/admin/agendamentos/:id/status', exigeAdminApi, (req, res) => {
   });
 });
 
-app.delete('/api/admin/agendamentos/:id', exigeAdminApi, (req, res) => {
+app.delete('/api/admin/agendamentos/:id', exigePermissao('agendamentos:editar'), (req, res) => {
   const agendamentos = lerAgendamentos();
   const agendamento = agendamentos.find((item) =>
     item.id === req.params.id && !item.excluidoEm
@@ -1162,7 +1323,7 @@ app.delete('/api/admin/agendamentos/:id', exigeAdminApi, (req, res) => {
   });
 });
 
-app.get('/api/admin/lixeira', exigeAdminApi, (req, res) => {
+app.get('/api/admin/lixeira', exigePermissao('agendamentos:ler'), (req, res) => {
   const itens = removerLixeiraExpirada()
     .filter((item) => item.excluidoEm)
     .sort((a, b) => b.excluidoEm.localeCompare(a.excluidoEm))
@@ -1178,7 +1339,7 @@ app.get('/api/admin/lixeira', exigeAdminApi, (req, res) => {
   return res.json({ agendamentos: itens, diasNaLixeira: DIAS_NA_LIXEIRA });
 });
 
-app.post('/api/admin/lixeira/:id/restaurar', exigeAdminApi, (req, res) => {
+app.post('/api/admin/lixeira/:id/restaurar', exigePermissao('agendamentos:editar'), (req, res) => {
   const resultado = transacaoAgendamentos((agendamentos) => {
     const agendamento = agendamentos.find((item) =>
       item.id === req.params.id && item.excluidoEm
@@ -1234,7 +1395,7 @@ app.post('/api/admin/lixeira/:id/restaurar', exigeAdminApi, (req, res) => {
   });
 });
 
-app.delete('/api/admin/lixeira/:id', exigeAdminApi, (req, res) => {
+app.delete('/api/admin/lixeira/:id', exigePermissao('agendamentos:editar'), (req, res) => {
   const agendamentos = lerAgendamentos();
   const restantes = agendamentos.filter((item) =>
     !(item.id === req.params.id && item.excluidoEm)
