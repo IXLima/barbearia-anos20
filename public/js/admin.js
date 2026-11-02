@@ -53,6 +53,7 @@ const elements = {
   bulkComplete: document.getElementById('bulkComplete'),
   bulkDelete: document.getElementById('bulkDelete'),
   bulkClear: document.getElementById('bulkClear'),
+  bulkAll: document.getElementById('bulkAll'),
   metricToday: document.getElementById('metricToday'),
   metricPending: document.getElementById('metricPending'),
   metricConfirmed: document.getElementById('metricConfirmed'),
@@ -367,7 +368,8 @@ function createAppointmentCard(appointment) {
       else state.selected.delete(appointment.id);
       updateBulkBar();
     });
-    card.prepend(marcar);
+    // Dentro da coluna de horário: não muda a grade de duas colunas do card.
+    card.querySelector('.appointment-time').prepend(marcar);
   }
 
   setText(fragment, 'horario', appointment.horario);
@@ -431,8 +433,13 @@ function createAppointmentCard(appointment) {
 function updateBulkBar() {
   const total = state.selected.size;
   const modoComLista = ['daily', 'monthly', 'all'].includes(state.mode);
-  elements.bulkBar.classList.toggle('hidden', total === 0 || !modoComLista);
+  const visiveis = state.appointments.length;
+
+  elements.bulkBar.classList.toggle('hidden', !modoComLista || visiveis === 0);
   elements.bulkCount.textContent = `${total} ${total === 1 ? 'selecionado' : 'selecionados'}`;
+  elements.bulkAll.checked = visiveis > 0 && total === visiveis;
+  elements.bulkComplete.disabled = total === 0;
+  elements.bulkDelete.disabled = total === 0;
 }
 
 function renderList() {
@@ -882,6 +889,15 @@ elements.bulkDelete.addEventListener('click', () => {
     (id) => api(`/api/admin/agendamentos/${id}`, { method: 'DELETE' }),
     'Movidos para a lixeira.'
   );
+});
+
+elements.bulkAll.addEventListener('change', () => {
+  const marcado = elements.bulkAll.checked;
+  state.selected = marcado ? new Set(state.appointments.map((appointment) => appointment.id)) : new Set();
+  elements.listView.querySelectorAll('.bulk-check').forEach((check) => {
+    check.checked = marcado;
+  });
+  updateBulkBar();
 });
 
 elements.bulkClear.addEventListener('click', () => {

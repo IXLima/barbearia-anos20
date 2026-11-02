@@ -168,9 +168,13 @@
       </div>
 
       <div id="bulkBar" class="bulk-bar hidden">
+        <label class="bulk-all">
+          <input id="bulkAll" type="checkbox">
+          Selecionar todos
+        </label>
         <span id="bulkCount">0 selecionados</span>
-        <button id="bulkComplete" class="button button--ghost" type="button">Concluir selecionados</button>
-        <button id="bulkDelete" class="button button--ghost" type="button">Excluir selecionados</button>
+        <button id="bulkComplete" class="button button--ghost" type="button" disabled>Concluir selecionados</button>
+        <button id="bulkDelete" class="button button--ghost" type="button" disabled>Excluir selecionados</button>
         <button id="bulkClear" class="button button--ghost" type="button">Limpar</button>
       </div>
 

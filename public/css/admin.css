@@ -467,6 +467,12 @@ h2 {
   display: none;
 }
 
+.bulk-all {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+}
+
 .bulk-check {
   width: 18px; height: 18px; margin: 0 12px 0 0; cursor: pointer;
   accent-color: currentColor;
