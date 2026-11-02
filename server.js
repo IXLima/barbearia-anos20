@@ -824,6 +824,12 @@ app.get('/admin', exigeAdminPagina, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+app.get('/admin/equipe', exigeAdminPagina, (req, res) => {
+  if (!temPermissao(req.user, 'equipe:gerenciar')) return res.redirect('/admin');
+
+  return res.sendFile(path.join(__dirname, 'public', 'equipe.html'));
+});
+
 // Equipe administrativa: só o dono gerencia. Convites ficam pendentes até a conta Google ou a senha ser usada.
 app.get('/api/admin/equipe', exigePermissao('equipe:gerenciar'), (req, res) => {
   const equipe = lerUsuarios()

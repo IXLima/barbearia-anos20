@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Equipe — Barbearia Nogueira</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span aria-hidden="true">✦</span>
+      <span>BARBEARIA NOGUEIRA</span>
+    </a>
+
+    <div class="user-area">
+      <div>
+        <span class="user-label">Administrador</span>
+        <strong id="adminName">Carregando...</strong>
+      </div>
+      <a class="button button--ghost" href="/admin">Voltar à agenda</a>
+      <a class="button button--ghost" href="/auth/logout">Sair</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">— Somente dono</p>
+        <h1>Equipe <em>administrativa.</em></h1>
+        <p class="page-description">
+          Adicione administradores e escolha o que cada um pode fazer.
+          Mudanças valem na hora.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="novoAdminTitulo">
+      <h2 id="novoAdminTitulo" class="panel-title">Adicionar administrador</h2>
+
+      <form id="formEquipe" class="team-form">
+        <label>
+          <span>E-mail</span>
+          <input id="novoEmail" type="email" required autocomplete="off">
+        </label>
+        <label>
+          <span>Nome</span>
+          <input id="novoNome" type="text" maxlength="80" autocomplete="off">
+        </label>
+        <label>
+          <span>Perfil</span>
+          <select id="novoPerfil">
+            <option value="agendamentos">Agendamentos</option>
+            <option value="relatorios">Relatórios</option>
+            <option value="dono">Dono</option>
+          </select>
+        </label>
+        <label>
+          <span>Senha (opcional)</span>
+          <input id="novaSenha" type="password" minlength="8" autocomplete="new-password">
+        </label>
+        <p class="team-hint">
+          Sem senha, a pessoa entra só com o Google usando este e-mail.
+          Com senha, ela também pode entrar pelo login de admin.
+        </p>
+        <button class="button button--primary" type="submit">Adicionar</button>
+      </form>
+
+      <p id="equipeMensagem" class="team-message hidden" role="status"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="equipeTitulo">
+      <h2 id="equipeTitulo" class="panel-title">Membros</h2>
+      <div id="equipeLista" class="team-list"></div>
+    </section>
+  </main>
+
+  <script src="/js/equipe.js"></script>
+</body>
+</html>

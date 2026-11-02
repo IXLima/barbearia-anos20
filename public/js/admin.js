@@ -1,4 +1,5 @@
 const state = {
+  permissoes: [],
   mode: 'daily',
   referenceDate: new Date(),
   appointments: [],
@@ -30,6 +31,7 @@ const trashActions = ['restaurar', 'apagar'];
 const elements = {
   adminName: document.getElementById('adminName'),
   newButton: document.getElementById('newButton'),
+  equipeLink: document.getElementById('equipeLink'),
   refreshButton: document.getElementById('refreshButton'),
   tabs: document.querySelectorAll('.view-button'),
   trashCount: document.getElementById('trashCount'),
@@ -215,8 +217,25 @@ async function loadAdminUser() {
     return;
   }
 
+  state.permissoes = data.permissoes || [];
   elements.adminName.textContent =
     data.usuario.nome || data.usuario.email || 'Administrador';
+  applyPermissions();
+}
+
+function temPermissao(permissao) {
+  return state.permissoes.includes(permissao);
+}
+
+// A API já bloqueia cada ação; aqui só escondemos o que o perfil não usa.
+function applyPermissions() {
+  const podeEditar = temPermissao('agendamentos:editar');
+  const podeRelatorios = temPermissao('relatorios:ler');
+
+  elements.newButton.classList.toggle('hidden', !podeEditar);
+  elements.closingButton.classList.toggle('hidden', !podeRelatorios);
+  elements.equipeLink.classList.toggle('hidden', !temPermissao('equipe:gerenciar'));
+  document.querySelector('.metrics')?.classList.toggle('hidden', !podeRelatorios);
 }
 
 function monthRange(date) {
@@ -333,6 +352,8 @@ function renderSummary(summary) {
 }
 
 async function loadSummary() {
+  if (!temPermissao('relatorios:ler')) return;
+
   try {
     const params = new URLSearchParams({
       referencia: localDateString(state.referenceDate)
@@ -358,6 +379,7 @@ function createAppointmentCard(appointment) {
   const fragment = elements.template.content.cloneNode(true);
   const card = fragment.querySelector('.appointment-card');
 
+  if (temPermissao('agendamentos:editar')) {
   const marcar = document.createElement('input');
   marcar.type = 'checkbox';
   marcar.className = 'bulk-check';
@@ -370,6 +392,8 @@ function createAppointmentCard(appointment) {
   });
   // Dentro da coluna de horário: não muda a grade de duas colunas do card.
   card.querySelector('.appointment-time').prepend(marcar);
+  }
+
 
   setText(fragment, 'horario', appointment.horario);
   setText(fragment, 'dataCurta', formatShortDate(appointment.data));
@@ -412,7 +436,9 @@ function createAppointmentCard(appointment) {
     notice.classList.remove('hidden');
   }
 
-  const allowed = inTrash ? trashActions : actionsByStatus[appointment.status] || ['excluir'];
+  const allowed = !temPermissao('agendamentos:editar')
+    ? []
+    : inTrash ? trashActions : actionsByStatus[appointment.status] || ['excluir'];
 
   fragment.querySelectorAll('[data-action]').forEach((button) => {
     if (!allowed.includes(button.dataset.action)) {
@@ -431,7 +457,8 @@ function createAppointmentCard(appointment) {
 
 function updateBulkBar() {
   const total = state.selected.size;
-  const modoComLista = ['daily', 'monthly', 'all', 'trash'].includes(state.mode);
+  const modoComLista = ['daily', 'monthly', 'all', 'trash'].includes(state.mode) &&
+    temPermissao('agendamentos:editar');
   const inTrash = state.mode === 'trash';
   const visiveis = state.appointments.length;
 
@@ -941,4 +968,4 @@ elements.bulkClear.addEventListener('click', () => {
 
 // Abre a lista completa quando o admin chega pelo link de um agendamento.
 const agendamentoDoLink = new URLSearchParams(location.search).get('agendamento');
-Promise.all([loadAdminUser(), agendamentoDoLink ? setMode('all') : refresh()]);
+loadAdminUser().then(() => (agendamentoDoLink ? setMode('all') : refresh()));
