@@ -1155,8 +1155,12 @@ h2 {
 
 .team-form input,
 .team-form select {
-  padding: 10px 12px; background: transparent; color: inherit;
+  padding: 10px 12px; background: #0d0d0d; color: var(--pure);
   border: 1px solid var(--border); font: inherit;
+}
+
+.team-form select option {
+  background: var(--card); color: var(--pure);
 }
 
 .team-hint {
