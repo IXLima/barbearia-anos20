@@ -458,6 +458,20 @@ h2 {
   display: none !important;
 }
 
+.bulk-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  margin: 16px 0;
+}
+
+.bulk-bar.hidden {
+  display: none;
+}
+
+.bulk-check {
+  width: 18px; height: 18px; margin: 0 12px 0 0; cursor: pointer;
+  accent-color: currentColor;
+}
+
 .list-view {
   display: grid;
 }

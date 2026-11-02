@@ -3,7 +3,8 @@ const state = {
   referenceDate: new Date(),
   appointments: [],
   summary: null,
-  dialog: null
+  dialog: null,
+  selected: new Set()
 };
 
 const statusLabels = {
@@ -47,6 +48,11 @@ const elements = {
   emptyText: document.getElementById('emptyText'),
   listView: document.getElementById('listView'),
   weeklyView: document.getElementById('weeklyView'),
+  bulkBar: document.getElementById('bulkBar'),
+  bulkCount: document.getElementById('bulkCount'),
+  bulkComplete: document.getElementById('bulkComplete'),
+  bulkDelete: document.getElementById('bulkDelete'),
+  bulkClear: document.getElementById('bulkClear'),
   metricToday: document.getElementById('metricToday'),
   metricPending: document.getElementById('metricPending'),
   metricConfirmed: document.getElementById('metricConfirmed'),
@@ -349,7 +355,20 @@ function createAppointmentCard(appointment) {
   const inTrash = state.mode === 'trash';
   const fragment = elements.template.content.cloneNode(true);
   const card = fragment.querySelector('.appointment-card');
-  card.dataset.id = appointment.id;
+
+  if (!inTrash) {
+    const marcar = document.createElement('input');
+    marcar.type = 'checkbox';
+    marcar.className = 'bulk-check';
+    marcar.setAttribute('aria-label', `Selecionar agendamento de ${appointment.nome}`);
+    marcar.checked = state.selected.has(appointment.id);
+    marcar.addEventListener('change', () => {
+      if (marcar.checked) state.selected.add(appointment.id);
+      else state.selected.delete(appointment.id);
+      updateBulkBar();
+    });
+    card.prepend(marcar);
+  }
 
   setText(fragment, 'horario', appointment.horario);
   setText(fragment, 'dataCurta', formatShortDate(appointment.data));
@@ -409,15 +428,27 @@ function createAppointmentCard(appointment) {
   return fragment;
 }
 
+function updateBulkBar() {
+  const total = state.selected.size;
+  const modoComLista = ['daily', 'monthly', 'all'].includes(state.mode);
+  elements.bulkBar.classList.toggle('hidden', total === 0 || !modoComLista);
+  elements.bulkCount.textContent = `${total} ${total === 1 ? 'selecionado' : 'selecionados'}`;
+}
+
 function renderList() {
   elements.listView.textContent = '';
+
+  // Mantém só a seleção que ainda aparece na lista atual.
+  const visiveis = new Set(state.appointments.map((appointment) => appointment.id));
+  state.selected = new Set([...state.selected].filter((id) => visiveis.has(id)));
 
   state.appointments.forEach((appointment) => {
     elements.listView.appendChild(createAppointmentCard(appointment));
   });
+  updateBulkBar();
 
   // Link vindo da mensagem do WhatsApp: mostra o agendamento em destaque.
-  const destaque = elements.listView.querySelector(`[data-id="${CSS.escape(agendamentoDoLink || '')}"]`);
+  const destaque = elements.listView.querySelector(`[data-appointment-id="${CSS.escape(agendamentoDoLink || '')}"]`);
   if (destaque) {
     destaque.style.outline = '2px solid var(--puro, #fff)';
     destaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -812,6 +843,53 @@ elements.rescheduleForm.addEventListener('submit', submitReschedule);
       dialog.close();
     }
   });
+});
+
+// Ações em massa usam as mesmas rotas de uma ação só, uma por agendamento.
+async function runBulk(ids, task, successMessage) {
+  let falhas = 0;
+
+  for (const id of ids) {
+    try {
+      await task(id);
+    } catch (error) {
+      falhas += 1;
+    }
+  }
+
+  state.selected.clear();
+  refresh();
+  showToast(
+    falhas ? `${ids.length - falhas} de ${ids.length} atualizados. ${falhas} falharam.` : successMessage,
+    falhas ? 'error' : 'success'
+  );
+}
+
+elements.bulkComplete.addEventListener('click', () =>
+  runBulk(
+    [...state.selected],
+    (id) => api(`/api/admin/agendamentos/${id}/status`, { method: 'PATCH', body: { status: 'concluido' } }),
+    'Atendimentos concluídos.'
+  )
+);
+
+elements.bulkDelete.addEventListener('click', () => {
+  const total = state.selected.size;
+  if (!window.confirm(`Mover ${total} agendamento(s) para a lixeira? Dá para restaurar em até 30 dias.`)) return;
+
+  runBulk(
+    [...state.selected],
+    (id) => api(`/api/admin/agendamentos/${id}`, { method: 'DELETE' }),
+    'Movidos para a lixeira.'
+  );
+});
+
+elements.bulkClear.addEventListener('click', () => {
+  state.selected.clear();
+  elements.listView.querySelectorAll('.bulk-check').forEach((check) => {
+    check.checked = false;
+  });
+  updateBulkBar();
 });
 
 // Abre a lista completa quando o admin chega pelo link de um agendamento.
